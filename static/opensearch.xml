@@ -1,0 +1,7 @@
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/" xmlns:moz="http://www.mozilla.org/2006/browser/search/">
+<ShortName>Swift</ShortName>
+<Description>Search Swift</Description>
+<InputEncoding>UTF-8</InputEncoding>
+<Url type="text/html" method="get" template="http://localhost:5137/?q={searchTerms}"/>
+<moz:SearchForm>http://localhost:5137</moz:SearchForm>
+</OpenSearchDescription>
