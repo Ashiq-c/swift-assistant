@@ -277,7 +277,7 @@
 				<input
 					type="text"
 					id="floating-message-input"
-					class="ml-5 bg-transparent outline-hidden w-full flex-1 text-sm"
+					class="ml-5 bg-transparent outline-none w-full flex-1 text-sm"
 					placeholder={$i18n.t('Ask a question')}
 					bind:value={floatingInputValue}
 					on:keydown={(e) => {

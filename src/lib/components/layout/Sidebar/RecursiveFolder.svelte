@@ -467,7 +467,7 @@
 									edit = false;
 								}
 							}}
-							class="w-full h-full bg-transparent text-gray-500 dark:text-gray-500 outline-hidden"
+							class="w-full h-full bg-transparent text-gray-500 dark:text-gray-500 outline-none"
 						/>
 					{:else}
 						{folders[folderId].name}

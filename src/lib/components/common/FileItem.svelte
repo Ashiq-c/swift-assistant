@@ -139,7 +139,7 @@
 				class=" bg-white text-black border border-gray-50 rounded-full {($settings?.highContrastMode ??
 				false)
 					? ''
-					: 'outline-hidden focus:outline-hidden group-hover:visible invisible transition'}"
+					: 'outline-none focus:outline-none group-hover:visible invisible transition'}"
 				type="button"
 				on:click|stopPropagation={() => {
 					dispatch('dismiss');

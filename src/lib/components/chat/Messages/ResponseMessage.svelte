@@ -604,10 +604,8 @@
 	>
 		<div class={`shrink-0 ltr:mr-3 rtl:ml-3 hidden @lg:flex mt-1 `}>
 			<ProfileImage
-				src={model?.info?.meta?.profile_image_url ??
-					($i18n.language === 'dg-DG'
-						? `${WEBUI_BASE_URL}/doge.png`
-						: `/static/favicon.png`)}
+				src={$user?.profile_image_url || '/assets/images/favicon.png'}
+
 				className={'size-8 assistant-message-profile-image'}
 			/>
 		</div>

@@ -91,12 +91,11 @@
 	import Placeholder from './Placeholder.svelte';
 	import NotificationToast from '../NotificationToast.svelte';
 
-	import Spinner from '../common/Spinner.svelte';
 	import { fade } from 'svelte/transition';
 
 	export let chatIdProp = '';
 
-	let loading = true;
+	let loading = false;
 
 	const eventTarget = new EventTarget();
 	let controlPane;
@@ -2760,12 +2759,6 @@
 					{eventTarget}
 				/>
 			</PaneGroup>
-		</div>
-	{:else if loading}
-		<div class=" flex items-center justify-center h-full w-full">
-			<div class="m-auto">
-				<Spinner className="size-5" />
-			</div>
 		</div>
 	{/if}
 </div>

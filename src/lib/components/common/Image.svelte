@@ -9,7 +9,7 @@
 	export let src = '';
 	export let alt = '';
 
-	export let className = ` w-full ${($settings?.highContrastMode ?? false) ? '' : 'outline-hidden focus:outline-hidden'}`;
+	export let className = ` w-full ${($settings?.highContrastMode ?? false) ? '' : 'outline-none focus:outline-none'}`;
 
 	export let imageClassName = 'rounded-lg';
 

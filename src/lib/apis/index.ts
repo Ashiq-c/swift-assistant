@@ -1200,7 +1200,7 @@ export const getBackendConfig = async () => {
 			console.error('Backend config fetch failed, using mock config:', err);
 			// Return a mock configuration for frontend-only mode
 			return {
-				name: 'Open WebUI (Custom API)',
+				name: 'Swift Teach',
 				version: '0.6.16',
 				default_locale: 'en-US',
 				features: {

@@ -155,7 +155,7 @@
 
 														<input
 															type="text"
-															class="flex-1 py-2 text-sm dark:text-gray-300 bg-transparent outline-hidden"
+															class="flex-1 py-2 text-sm dark:text-gray-300 bg-transparent outline-none"
 															placeholder="Enter hex color (e.g. #FF0000)"
 															bind:value={variableValues[variable]}
 															autocomplete="off"
@@ -165,7 +165,7 @@
 												{:else if variables[variable]?.type === 'date'}
 													<input
 														type="date"
-														class="w-full rounded-lg py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 outline-hidden border border-gray-100 dark:border-gray-850"
+														class="w-full rounded-lg py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none border border-gray-100 dark:border-gray-850"
 														placeholder={variables[variable]?.placeholder ?? ''}
 														bind:value={variableValues[variable]}
 														autocomplete="off"

@@ -47,9 +47,9 @@
 	import ChangelogModal from '$lib/components/ChangelogModal.svelte';
 	import AccountPending from '$lib/components/layout/Overlay/AccountPending.svelte';
 	import UpdateInfoToast from '$lib/components/layout/UpdateInfoToast.svelte';
-	import Spinner from '$lib/components/common/Spinner.svelte';
 
-	let loaded = false;
+
+	let loaded = true;
 	let showSidebar = false;
 
 	let showUpdateInfoToast = false;
@@ -128,33 +128,27 @@
 	<title>Swift</title>
 </svelte:head>
 
-{#if loaded}
-	<div class="app relative">
-		<div class="flex h-screen max-h-[100dvh] w-full">
-			<Sidebar bind:show={showSidebar} />
+<div class="app relative">
+	<div class="flex h-screen max-h-[100dvh] w-full">
+		<Sidebar bind:show={showSidebar} />
 
-			<div class="flex flex-col flex-1 max-h-[100dvh] overflow-hidden">
-				<TopBar bind:showSidebar />
+		<div class="flex flex-col flex-1 max-h-[100dvh] overflow-hidden">
+			<TopBar bind:showSidebar />
 
-				<div class="flex flex-col flex-1 max-h-full overflow-hidden">
-					<slot />
-				</div>
+			<div class="flex flex-col flex-1 max-h-full overflow-hidden">
+				<slot />
 			</div>
 		</div>
-
-		<SettingsModal bind:show={$showSettings} />
-		<ChangelogModal bind:show={$showChangelog} />
-
-		{#if $user?.role !== 'user'}
-			<AccountPending />
-		{/if}
-
-		{#if showUpdateInfoToast}
-			<UpdateInfoToast bind:show={showUpdateInfoToast} />
-		{/if}
 	</div>
-{:else}
-	<div class="flex items-center justify-center h-screen">
-		<Spinner className="size-6" />
-	</div>
-{/if}
+
+	<SettingsModal bind:show={$showSettings} />
+	<ChangelogModal bind:show={$showChangelog} />
+
+	{#if $user?.role !== 'user'}
+		<AccountPending />
+	{/if}
+
+	{#if showUpdateInfoToast}
+		<UpdateInfoToast bind:show={showUpdateInfoToast} />
+	{/if}
+</div>

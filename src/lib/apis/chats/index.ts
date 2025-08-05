@@ -1363,7 +1363,7 @@ export const sendChatMessageStreamingSSE = async (
         const authToken = localStorage.getItem('token');
 
         // Create URL with parameters
-        const url = new URL(`${import.meta.env.VITE_API_BASE_URL}/api/v1/chat/${chatId}/stream/`);
+        const url = new URL(`${import.meta.env.VITE_API_BASE_URL}api/v1/chat/${chatId}/stream/`);
         url.searchParams.append('prompt', prompt);
         url.searchParams.append('stream', 'true');
 
@@ -1446,7 +1446,7 @@ export const streamChatMessage = async (
             headers['Authorization'] = `Bearer ${authToken}`;
         }
 
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/chat/${chatId}/stream/`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}api/v1/chat/${chatId}/stream/`, {
             method: 'POST',
             headers,
             body: formdata
@@ -1695,7 +1695,7 @@ export const getRecentChats = async () => {
             headers,
             redirect: 'follow'
         };
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/recent-chats/`, requestOptions);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}api/v1/recent-chats/`, requestOptions);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -1724,7 +1724,7 @@ export const getChatHistory = async (chatId) => {
             headers,
             redirect: 'follow'
         };
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/chat-history/${chatId}/`, requestOptions);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}api/v1/chat-history/${chatId}/`, requestOptions);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
