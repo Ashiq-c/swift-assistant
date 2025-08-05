@@ -34,7 +34,6 @@
 	import { getSessionUser, userSignOut } from '$lib/apis/auths';
 
 	import '../tailwind.css';
-	// import '../app.css';
 
 	import 'tippy.js/dist/tippy.css';
 
