@@ -1,0 +1,12 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".svelte-kit/output/static",
+  "framework": null,
+  "build": {
+    "env": {
+      "NODE_OPTIONS": "--max-old-space-size=2048",
+      "NODE_ENV": "production",
+      "VITE_BUILD_TARGET": "static"
+    }
+  }
+}

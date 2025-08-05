@@ -1,0 +1,15 @@
+node_modules
+.env
+.env.local
+.env.*.local
+.git
+.DS_Store
+*.log
+.svelte-kit/output
+.svelte-kit/types
+cypress
+test
+docs
+scripts
+*.md
+!README.md
