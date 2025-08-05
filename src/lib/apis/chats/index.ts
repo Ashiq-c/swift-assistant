@@ -1695,7 +1695,7 @@ export const getRecentChats = async () => {
             headers,
             redirect: 'follow'
         };
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/recent-chats/`, requestOptions);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}api/v1/recent-chats/`, requestOptions);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -1724,7 +1724,7 @@ export const getChatHistory = async (chatId) => {
             headers,
             redirect: 'follow'
         };
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/chat-history/${chatId}/`, requestOptions);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}api/v1/chat-history/${chatId}/`, requestOptions);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }

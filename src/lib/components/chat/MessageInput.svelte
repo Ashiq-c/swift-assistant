@@ -1501,9 +1501,7 @@
 												chatInput?.focus();
 											}}
 										>
-											<div
-												class="text-gray-500 hover:text-gray-700 transition rounded-full p-1.5"
-											>
+											<div class="text-gray-500 hover:text-gray-700 transition rounded-full p-1.5">
 												<svg
 													xmlns="http://www.w3.org/2000/svg"
 													viewBox="0 0 20 20"
@@ -1823,8 +1821,6 @@
 									</div>
 								</div>
 							</div>
-
-
 						</form>
 					{/if}
 				</div>
