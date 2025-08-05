@@ -324,6 +324,10 @@ input[type='number'] {
 	border: none;
 }
 
+.ProseMirror:focus-visible, .ProseMirror:focus-within, .ProseMirror >p:focus-visible {
+	outline: none !important;
+}
+
 .ProseMirror:focus {
 	outline: none;
 }
