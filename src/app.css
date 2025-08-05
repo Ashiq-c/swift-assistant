@@ -1,4 +1,6 @@
-@reference "./tailwind.css";
+@import 'tailwindcss';
+
+@config '../tailwind.config.js';
 
 @font-face {
 	font-family: 'Inter';
