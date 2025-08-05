@@ -313,6 +313,15 @@ input[type='number'] {
 
 .ProseMirror {
 	@apply h-full min-h-fit max-h-full whitespace-pre-wrap;
+	box-shadow: none;
+	outline: none;
+	border: none;
+}
+
+.ProseMirror > p {
+	box-shadow: none;
+	outline: none;
+	border: none;
 }
 
 .ProseMirror:focus {
