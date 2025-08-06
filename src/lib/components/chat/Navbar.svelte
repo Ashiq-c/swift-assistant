@@ -57,7 +57,7 @@
 />
 
 <nav class="sticky top-0 z-30 w-full bg-white drag-region">
-	<div class="flex items-center justify-between w-full px-4 py-3">
+	<div class="flex items-center justify-between w-full px-4 py-3 hidden">
 		<!-- Left side: Back arrow only -->
 		<div class="flex items-center">
 			<button

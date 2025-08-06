@@ -440,16 +440,47 @@ export const getChatListByTagName = async (token: string = '', tagName: string) 
 };
 
 export const getChatById = async (token: string, id: string) => {
-    // Static implementation using localStorage
+    console.log('🔍 getChatById called with id:', id);
+
+    try {
+        // First try to get from API (for recent chats that exist in backend)
+        const headers: HeadersInit = {};
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}api/v1/chats/${id}/`, {
+            method: 'GET',
+            headers,
+            redirect: 'follow'
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('✅ Retrieved chat from API:', { id: result.id, title: result.title });
+            return { chat: result };
+        } else {
+            console.log('⚠️ Chat not found in API, trying localStorage...');
+        }
+    } catch (apiError) {
+        console.log('⚠️ API error, falling back to localStorage:', apiError);
+    }
+
+    // Fallback to static implementation using localStorage
     const chats = getStoredChats();
+    console.log('🔍 Available local chats:', chats.map(c => ({ id: c.id, title: c.title })));
+
     const chat = chats.find(c => c.id === id);
 
     if (!chat) {
+        console.error('❌ Chat not found with id:', id);
+        console.log('🔍 Available chat IDs:', chats.map(c => c.id));
         throw new Error(`Chat with id ${id} not found`);
     }
 
-    console.log('🔍 Retrieved static chat by ID:', chat);
-    return chat;
+    console.log('✅ Retrieved static chat by ID:', { id: chat.id, title: chat.title });
+    // Return in the expected format with chat property
+    return { chat: chat };
 };
 
 export const getChatByShareId = async (token: string, share_id: string) => {
@@ -1037,25 +1068,52 @@ export const createChatViaAPI = async (token: string) => {
     }
 };
 
-export const sendChatMessage = async (chatId: string, prompt: string) => {
+export const sendChatMessage = async (
+    chatId: string, 
+    prompt: string, 
+    options: {
+        stream?: boolean;
+        onChunk?: (chunk: string) => void;
+        onComplete?: (fullResponse: string) => void;
+        onError?: (error: Error) => void;
+    } = {}
+) => {
+    const { stream = false, onChunk, onComplete, onError } = options;
     let error = null;
 
     try {
-        console.log('🔄 sendChatMessage called with:', { chatId, prompt: prompt.substring(0, 50) + '...' });
+        console.log('🔄 sendChatMessage called with:', { 
+            chatId, 
+            prompt: prompt.substring(0, 50) + '...', 
+            stream 
+        });
 
         const formdata = new FormData();
         formdata.append("prompt", prompt);
+        
+        // Add stream parameter if streaming is enabled
+        if (stream) {
+            formdata.append("stream", "true");
+        }
 
         // Get token from localStorage
         const authToken = localStorage.getItem('token');
         console.log('🔑 Auth token exists:', !!authToken);
 
-        const headers: HeadersInit = {};
+        const headers: HeadersInit = {
+            'Cache-Control': 'no-cache'
+        };
+        
         if (authToken) {
             headers['Authorization'] = `Bearer ${authToken}`;
         }
 
-        const requestOptions = {
+        // Add streaming headers if streaming is enabled
+        // if (stream) {
+        //     headers['Accept'] = 'text/event-stream';
+        // }
+
+        const requestOptions: RequestInit = {
             method: 'POST',
             headers,
             body: formdata,
@@ -1067,7 +1125,8 @@ export const sendChatMessage = async (chatId: string, prompt: string) => {
         console.log('📋 Request options:', {
             method: requestOptions.method,
             headers: Object.keys(headers),
-            hasBody: !!requestOptions.body
+            hasBody: !!requestOptions.body,
+            streaming: stream
         });
 
         const response = await fetch(apiUrl, requestOptions);
@@ -1078,12 +1137,189 @@ export const sendChatMessage = async (chatId: string, prompt: string) => {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('❌ HTTP error response:', errorText);
-            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            const errorObj = new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            if (onError) {
+                onError(errorObj);
+                return null;
+            }
+            throw errorObj;
         }
 
-        const result = await response.json();
-        console.log('✅ API response received:', result);
-        return result;
+        // Handle streaming response
+        if (stream && response.body) {
+            console.log('📡 Processing streaming response...');
+            console.log('📡 Response Content-Type:', response.headers.get('content-type'));
+            
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullResponse = '';
+            let buffer = '';
+
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+
+                    if (done) {
+                        // Process any remaining buffer
+                        if (buffer.trim()) {
+                            console.log('📡 Processing final buffer:', buffer);
+                            
+                            // Try to parse as JSON first
+                            try {
+                                const parsed = JSON.parse(buffer);
+                                console.log('📡 Final buffer parsed as JSON:', parsed);
+                                
+                                const content = parsed.token || 
+                                              parsed.response || 
+                                              parsed.content || 
+                                              parsed.text || 
+                                              parsed.message || '';
+                                              
+                                if (content) {
+                                    fullResponse = content;
+                                    onChunk?.(content);
+                                }
+                            } catch (parseError) {
+                                // If not JSON, treat as plain text
+                                console.log('📡 Final buffer as plain text:', buffer);
+                                fullResponse = buffer;
+                                onChunk?.(buffer);
+                            }
+                        }
+                        
+                        console.log('📡 Streaming complete. Full response:', fullResponse);
+                        onComplete?.(fullResponse);
+                        break;
+                    }
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    buffer += chunk;
+                    
+                    console.log('📡 Received chunk:', chunk);
+                    console.log('📡 Current buffer:', buffer);
+
+                    // Try to process buffer as complete JSON objects or SSE format
+                    let processedSomething = false;
+                    
+                    // Check for Server-Sent Events format
+                    if (buffer.includes('data: ')) {
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+                        for (const line of lines) {
+                            if (line.trim() === '') continue;
+
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6).trim();
+                                console.log('📡 SSE data:', data);
+
+                                if (data === '[DONE]') {
+                                    onComplete?.(fullResponse);
+                                    return { 
+                                        success: true, 
+                                        response: fullResponse,
+                                        streaming: true 
+                                    };
+                                }
+
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    const content = parsed.choices?.[0]?.delta?.content ||
+                                                  parsed.delta?.content ||
+                                                  parsed.content ||
+                                                  parsed.text ||
+                                                  parsed.token || '';
+
+                                    if (content) {
+                                        fullResponse += content;
+                                        onChunk?.(content);
+                                        processedSomething = true;
+                                    }
+                                } catch (parseError) {
+                                    // Handle plain text responses
+                                    if (data.trim() && data !== '[DONE]') {
+                                        fullResponse += data;
+                                        onChunk?.(data);
+                                        processedSomething = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Check for complete JSON objects (newline-delimited JSON)
+                    if (!processedSomething && buffer.includes('\n')) {
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+                        
+                        for (const line of lines) {
+                            if (line.trim()) {
+                                console.log('📡 Processing JSON line:', line);
+                                try {
+                                    const parsed = JSON.parse(line);
+                                    const content = parsed.token || 
+                                                  parsed.response || 
+                                                  parsed.content || 
+                                                  parsed.text || 
+                                                  parsed.message || '';
+                                                  
+                                    if (content) {
+                                        fullResponse += content;
+                                        onChunk?.(content);
+                                        processedSomething = true;
+                                    }
+                                } catch (parseError) {
+                                    // If not JSON, treat as plain text chunk
+                                    console.log('📡 Plain text chunk:', line);
+                                    fullResponse += line;
+                                    onChunk?.(line);
+                                    processedSomething = true;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // If no structured format detected, treat each chunk as plain text
+                    if (!processedSomething && chunk.trim()) {
+                        console.log('📡 Direct chunk processing:', chunk);
+                        onChunk?.(chunk);
+                        // Don't add to fullResponse here as it's already in buffer
+                    }
+                }
+
+                return { 
+                    success: true, 
+                    response: fullResponse,
+                    streaming: true 
+                };
+            } finally {
+                reader.releaseLock();
+            }
+        } else {
+            // Handle non-streaming response (backward compatibility)
+            try {
+                const result = await response.json();
+                console.log('✅ API response received:', result);
+                return result;
+            } catch (jsonError) {
+                // If JSON parsing fails, try to get as text
+                console.log('⚠️ JSON parsing failed, trying as text...');
+                const textResult = await response.text();
+                console.log('✅ API text response received:', textResult);
+                
+                // Try to parse the text as JSON one more time
+                try {
+                    return JSON.parse(textResult);
+                } catch (secondParseError) {
+                    // Return as plain text wrapped in expected format
+                    return {
+                        success: true,
+                        response: textResult,
+                        token: textResult
+                    };
+                }
+            }
+        }
         
     } catch (err) {
         error = err;
@@ -1094,6 +1330,11 @@ export const sendChatMessage = async (chatId: string, prompt: string) => {
             chatId,
             apiBaseUrl: import.meta.env.VITE_API_BASE_URL
         });
+        
+        if (onError) {
+            onError(err as Error);
+        }
+        
         return null;
     }
 };
@@ -1690,7 +1931,7 @@ export const getRecentChats = async () => {
             headers['Authorization'] = `Bearer ${authToken}`;
         }
 
-        const requestOptions = {
+        const requestOptions: RequestInit = {
             method: 'GET',
             headers,
             redirect: 'follow'
@@ -1709,7 +1950,6 @@ export const getRecentChats = async () => {
 };
 
 export const getChatHistory = async (chatId) => {
-    let error = null;
     try {
         // Get token from localStorage
         const authToken = localStorage.getItem('token');
@@ -1719,21 +1959,97 @@ export const getChatHistory = async (chatId) => {
             headers['Authorization'] = `Bearer ${authToken}`;
         }
 
-        const requestOptions = {
+        const requestOptions: RequestInit = {
             method: 'GET',
             headers,
             redirect: 'follow'
         };
+
+        console.log('� Fetching chat history from API for chatId:', chatId);
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}api/v1/chat-history/${chatId}/`, requestOptions);
+
         if (!response.ok) {
+            console.error('❌ Chat history API error:', response.status, response.statusText);
             throw new Error(`HTTP error! status: ${response.status}`);
         }
+
         const result = await response.json();
+        console.log('✅ Chat history API response:', result);
         return result;
+
     } catch (err) {
-        error = err;
-        console.error('Error fetching chat history:', err);
-        return null;
+        console.error('❌ Error fetching chat history from API:', err);
+
+        // Fallback to static implementation using localStorage
+        console.log('🔄 Falling back to localStorage data...');
+        const chats = getStoredChats();
+        const chat = chats.find(c => c.id === chatId);
+
+        if (!chat) {
+            console.log('❌ Chat not found for chatId:', chatId);
+            return { success: false, response: [] };
+        }
+
+        // Extract message history from the chat
+        let historyMessages = [];
+
+        // If chat has a history object with messages, convert them to the expected format
+        if (chat.history && chat.history.messages) {
+            const messages = chat.history.messages;
+            
+            // Convert the history messages to the format expected by the frontend
+            Object.values(messages).forEach((message: any) => {
+                if (message.role === 'user') {
+                    historyMessages.push({
+                        prompt: message.content,
+                        created_at: message.timestamp ? new Date(message.timestamp).toISOString() : new Date().toISOString()
+                    });
+                } else if (message.role === 'assistant') {
+                    // Find the corresponding user message and add the assistant response
+                    const lastMessage = historyMessages[historyMessages.length - 1];
+                    if (lastMessage && !lastMessage.system) {
+                        lastMessage.system = message.content;
+                    } else {
+                        // If no corresponding user message, create a new entry
+                        historyMessages.push({
+                            prompt: '',
+                            system: message.content,
+                            created_at: message.timestamp ? new Date(message.timestamp).toISOString() : new Date().toISOString()
+                        });
+                    }
+                }
+            });
+        }
+        
+        // If no history messages but has legacy messages array, convert those
+        else if (chat.messages && Array.isArray(chat.messages) && chat.messages.length > 0) {
+            for (let i = 0; i < chat.messages.length; i += 2) {
+                const userMessage = chat.messages[i];
+                const assistantMessage = chat.messages[i + 1];
+                
+                const historyEntry: any = {
+                    created_at: new Date().toISOString()
+                };
+                
+                if (userMessage && userMessage.role === 'user') {
+                    historyEntry.prompt = userMessage.content;
+                }
+                
+                if (assistantMessage && assistantMessage.role === 'assistant') {
+                    historyEntry.system = assistantMessage.content;
+                }
+                
+                if (historyEntry.prompt || historyEntry.system) {
+                    historyMessages.push(historyEntry);
+                }
+            }
+        }
+
+        console.log('✅ Retrieved static chat history for chatId:', chatId, 'messages:', historyMessages.length);
+        return {
+            success: true,
+            response: historyMessages
+        };
     }
 };
 

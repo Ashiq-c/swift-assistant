@@ -64,9 +64,14 @@
 	onMount(async () => {
 		await initChatList();
 
+		console.log('🔄 Loading recent chats...');
 		const recent = await getRecentChats();
+		console.log('📋 Recent chats response:', recent);
 		if (recent && recent.success && Array.isArray(recent.response)) {
 			recentChats = recent.response;
+			console.log('✅ Recent chats loaded:', recentChats.length, 'chats');
+		} else {
+			console.log('❌ Failed to load recent chats or invalid response:', recent);
 		}
 
 		// Initialize sidebar visibility - show by default on non-mobile devices
@@ -94,9 +99,10 @@
 	style="background: linear-gradient(180deg, #375A7F 0%, #8B49DE 100%);"
 >
 	<!-- Logo Section - Top Bar Height -->
-	<div class="h-12 flex items-center justify-center flex-shrink-0" style="background: linear-gradient(180deg, #375A7F 0%, #8B49DE 100%);">
-		<div class="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-			<span class="text-sm font-bold" style="color: #375A7F;">OI</span>
+	<div class="h-12 flex items-center justify-center flex-shrink-0">
+		<div class="w-8 h-8 rounded-full flex items-center justify-center">
+			<img src="/assets/images/swift_logo.png" alt="Logo" class="w-6 h-6 object-contain" />
+			<!-- <span class="text-sm font-bold" style="color: #375A7F;">OI</span> -->
 		</div>
 	</div>
 
@@ -231,12 +237,12 @@
 	id="content-sidebar"
 	class="h-screen max-h-[100dvh] min-h-screen select-none {$showSidebar
 		? 'md:relative w-[260px] max-w-[260px]'
-		: '-translate-x-[260px] w-[0px]'} transition-width duration-200 ease-in-out shrink-0 text-gray-900 text-sm fixed z-40 top-0 left-[56px] overflow-x-hidden"
+		: '-translate-x-[260px] w-[0px]'} transition-width duration-200 ease-in-out shrink-0 text-gray-900 text-sm fixed z-40 top-0 left-[56px] "
 	style="background: #FFFFFF;"
 	data-state={$showSidebar}
 >
 	<div
-		class="flex flex-col h-screen max-h-[100dvh] w-[260px] overflow-x-hidden z-50 {$showSidebar
+		class="flex flex-col h-screen max-h-[100dvh] w-[260px] z-50  {$showSidebar
 			? ''
 			: 'invisible'}"
 	>
@@ -246,7 +252,7 @@
 		<!-- Content with padding -->
 		<div class="flex flex-col h-full p-3">
 		<!-- Inner content container with background -->
-		<div class="flex flex-col h-full overflow-hidden" style="background: #FAFAFA;">
+		<div class="flex flex-col h-full overflow-hidden max-h-[calc(100vh-100px)] rounded-lg bg-[#FAFAFA]">
 			<!-- Header with back arrow and title -->
 			<div class="px-6 py-4 bg-white">
 				<div class="flex items-center space-x-3">
@@ -266,7 +272,7 @@
 			</div>
 
 			<!-- Content Area -->
-			<div class="flex-1 overflow-y-auto" style="background: #FAFAFA;">
+			<div class="flex-1" >
 			<!-- Top spacing -->
 			<div class="h-4"></div>
 
@@ -345,12 +351,16 @@
 			<!-- Recent Chats Section -->
 			<div class="px-6">
 				<h3 class="text-xs font-medium text-gray-500 mb-3">Recent Chats</h3>
-				<div class="space-y-1">
+				<div class="space-y-1 max-h-80 overflow-scroll scroll-smooth">
 					{#if recentChats.length === 0}
 						<div class="px-3 py-2 text-gray-400 text-sm">No recent chats</div>
 					{:else}
 						{#each recentChats as chat}
-							<div class="px-3 py-2 hover:bg-gray-100 rounded-lg transition cursor-pointer" on:click={() => goto(`/c/${chat.id}`)}>
+						
+							<div class="px-3 py-2 hover:bg-gray-100 rounded-lg transition cursor-pointer" on:click={() => {
+								console.log('🔄 Clicking recent chat:', chat.id, chat.title);
+								goto(`/c/${chat.id}`);
+							}}>
 								<p class="text-gray-700 text-sm truncate">{chat.title}</p>
 							</div>
 						{/each}

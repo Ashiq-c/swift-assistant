@@ -887,13 +887,16 @@
 	};
 
 	const loadChat = async () => {
+		console.log('🔄 loadChat called with chatIdProp:', chatIdProp);
 		chatId.set(chatIdProp);
 
 		if ($temporaryChatEnabled) {
 			temporaryChatEnabled.set(false);
 		}
 
+		console.log('🔄 Calling getChatById with chatId:', $chatId);
 		chat = await getChatById(localStorage.token, $chatId).catch(async (error) => {
+			console.error('❌ getChatById failed:', error);
 			await goto('/');
 			return null;
 		});
@@ -904,10 +907,12 @@
 				return [];
 			});
 
-			const chatContent = chat.chat;
+			// Handle both formats: { chat: {...} } and direct chat object
+			const chatContent = chat.chat || chat;
 
 			if (chatContent) {
 				console.log('🔍 Chat content:', chatContent);
+				console.log('🔍 Chat title:', chatContent.title);
 
 				selectedModels =
 					(chatContent?.models ?? undefined) !== undefined
@@ -936,9 +941,22 @@
 				await tick();
 				if (chatHistory && chatHistory.length > 0) {
 					console.log('🔄 Force integrating chat history immediately after load');
+					console.log('🔄 Before integration - history.currentId:', history.currentId);
+					console.log('🔄 Before integration - history.messages count:', Object.keys(history.messages).length);
 					history = integrateChatHistoryIntoMessages(chatHistory, history);
 					integratedChatId = $chatId;
 					console.log('✅ Force integration complete - history now has', Object.keys(history.messages).length, 'messages');
+					console.log('✅ After integration - history.currentId:', history.currentId);
+					console.log('✅ After integration - history.messages:', Object.keys(history.messages));
+
+					// Force a reactive update
+					await tick();
+					console.log('🔄 Forced reactive update after integration');
+				} else {
+					console.log('❌ No chat history to integrate:', {
+						chatHistoryExists: !!chatHistory,
+						chatHistoryLength: chatHistory?.length || 0
+					});
 				}
 
 				const userSettings = await getUserSettings(localStorage.token);
@@ -1479,7 +1497,7 @@
 	};
 
 	const sendPromptToCustomAPI = async (prompt: string) => {
-		console.log('🔄 Intercepting chat request for custom API');
+		console.log('🔄 Intercepting chat request for custom API with streaming support');
 
 		try {
 			// Create response message
@@ -1492,7 +1510,8 @@
 				content: '',
 				timestamp: Math.floor(Date.now() / 1000),
 				models: ['custom-api'],
-				done: false
+				done: false,
+				streaming: false
 			};
 
 			// Add response message to history
@@ -1507,53 +1526,100 @@
 				scrollToBottom();
 			}
 
-			console.log('🚀 Sending message to chat API with chat ID:', $chatId);
+			console.log('🚀 Sending streaming message to chat API with chat ID:', $chatId);
 			console.log('🔧 API Base URL:', import.meta.env.VITE_API_BASE_URL);
 			console.log('🔑 Token exists:', !!localStorage.getItem('token'));
 
-			// Run comprehensive API test to diagnose issues
-			console.log('🧪 Running API diagnostics...');
-			await testChatAPI();
+			// Call the enhanced sendChatMessage with streaming support
+			const response = await sendChatMessage($chatId, prompt, {
+				stream: true,
+				onChunk: (chunk: string) => {
+					console.log('📥 Received streaming chunk:', chunk);
+					// Update message content in real-time
+					responseMessage.content += chunk;
+					responseMessage.streaming = true;
+					history.messages[responseMessageId] = responseMessage;
+					history = history;
 
-			// Call the new chat API with the specific chat ID
-			const response = await sendChatMessage($chatId, prompt);
+					// Auto-scroll to bottom during streaming
+					if (autoScroll) {
+						setTimeout(scrollToBottom, 10);
+					}
+				},
+				onComplete: (fullResponse: string) => {
+					console.log('✅ Streaming complete. Full response:', fullResponse);
+					// Mark as complete
+					responseMessage.content = fullResponse;
+					responseMessage.done = true;
+					responseMessage.streaming = false;
+					history.messages[responseMessageId] = responseMessage;
+					history = history;
 
-			console.log('📥 Raw API response:', response);
+					// Final scroll to bottom
+					setTimeout(() => {
+						if (autoScroll) {
+							scrollToBottom();
+						}
+					}, 100);
+				},
+				onError: (error: Error) => {
+					console.error('❌ Streaming error:', error);
+					// Handle streaming error
+					responseMessage.content = `Error: ${error.message}`;
+					responseMessage.error = { content: error.message };
+					responseMessage.done = true;
+					responseMessage.streaming = false;
+					history.messages[responseMessageId] = responseMessage;
+					history = history;
 
-			if (!response) {
-				throw new Error('Failed to get response from API - response is null/undefined. Check console for detailed error logs.');
-			}
+					// Scroll to bottom on error
+					setTimeout(() => {
+						if (autoScroll) {
+							scrollToBottom();
+						}
+					}, 100);
 
-			console.log('📥 Chat API response:', response);
+					toast.error(`Streaming failed: ${error.message}`);
+				}
+			});
 
-			// Parse the response based on your API's format
-			let responseContent = 'No response from API';
+			// Handle fallback for non-streaming response
+			if (response && !response.streaming) {
+				console.log('📥 Non-streaming API response:', response);
 
-			if (response.success && response.response !== undefined) {
-				// Your API response format
-				responseContent = response.response || 'Empty response';
-			} else if (response.choices && response.choices.length > 0 && response.choices[0].message) {
-				// OpenAI-style response format
-				responseContent = response.choices[0].message.content || 'Empty response';
-			} else if (response.content) {
-				// Alternative content field
-				responseContent = response.content;
-			} else if (typeof response === 'string') {
-				// Direct string response
-				responseContent = response;
-			}
+				// Parse the response based on your API's format
+				let responseContent = 'No response from API';
 
-			console.log('📝 Parsed response content:', responseContent);
+				if (response.success && response.response !== undefined) {
+					// Your API response format
+					responseContent = response.response || 'Empty response';
+				} else if (response.choices && response.choices.length > 0 && response.choices[0].message) {
+					// OpenAI-style response format
+					responseContent = response.choices[0].message.content || 'Empty response';
+				} else if (response.content) {
+					// Alternative content field
+					responseContent = response.content;
+				} else if (typeof response === 'string') {
+					// Direct string response
+					responseContent = response;
+				} else if (response.token) {
+					// Handle token response format
+					responseContent = response.token;
+				}
 
-			// Update the response message with the API response
-			history.messages[responseMessageId].content = responseContent;
-			history.messages[responseMessageId].done = true;
-			history = history;
+				console.log('📝 Parsed response content:', responseContent);
 
-			// Scroll to bottom
-			await tick();
-			if (autoScroll) {
-				scrollToBottom();
+				// Update the response message with the API response
+				history.messages[responseMessageId].content = responseContent;
+				history.messages[responseMessageId].done = true;
+				history.messages[responseMessageId].streaming = false;
+				history = history;
+
+				// Scroll to bottom
+				await tick();
+				if (autoScroll) {
+					scrollToBottom();
+				}
 			}
 
 		} catch (error) {
@@ -1564,6 +1630,7 @@
 				history.messages[history.currentId].content = `Error: ${error.message}`;
 				history.messages[history.currentId].done = true;
 				history.messages[history.currentId].error = true;
+				history.messages[history.currentId].streaming = false;
 				history = history;
 			}
 
@@ -2387,7 +2454,7 @@
 
 		try {
 			console.log('🔄 Loading chat history for chatId:', chatId);
-			console.log('🔍 API endpoint:', `http://127.0.0.1:8000/api/v1/chat-history/${chatId}/`);
+			console.log('🔍 API endpoint:', `${import.meta.env.VITE_API_BASE_URL}api/v1/chat-history/${chatId}/`);
 			const historyRes = await getChatHistory(chatId);
 			console.log('🔍 API response:', historyRes);
 			if (historyRes && historyRes.success && Array.isArray(historyRes.response)) {
@@ -2411,6 +2478,64 @@
 		console.log('🔍 Chat history updated:', chatHistory.length, 'messages', chatHistory);
 	}
 
+	// Debug function to manually test chat history loading
+	window.debugChatHistory = async (chatId) => {
+		console.log('🧪 Manual debug test for chatId:', chatId);
+		await loadChatHistoryOnce(chatId);
+		console.log('🧪 After manual load - chatHistory:', chatHistory);
+		if (chatHistory && chatHistory.length > 0) {
+			console.log('🧪 Attempting integration...');
+			history = integrateChatHistoryIntoMessages(chatHistory, history);
+			console.log('🧪 After integration - history:', history);
+			console.log('🧪 After integration - currentId:', history.currentId);
+			console.log('🧪 After integration - messages:', Object.keys(history.messages));
+		}
+	};
+
+	// Debug function to check current state
+	window.debugCurrentState = () => {
+		console.log('🧪 Current state:');
+		console.log('  - chatHistory:', chatHistory);
+		console.log('  - history.currentId:', history.currentId);
+		console.log('  - history.messages count:', Object.keys(history.messages).length);
+		console.log('  - history.messages keys:', Object.keys(history.messages));
+		if (history.currentId) {
+			console.log('  - current message:', history.messages[history.currentId]);
+		}
+	};
+
+	// Debug function to test API directly
+	window.testChatHistoryAPI = async (chatId) => {
+		console.log('🧪 Testing chat history API directly for chatId:', chatId);
+		try {
+			const authToken = localStorage.getItem('token');
+			const headers = {};
+			if (authToken) {
+				headers['Authorization'] = `Bearer ${authToken}`;
+			}
+
+			const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}api/v1/chat-history/${chatId}/`, {
+				method: 'GET',
+				headers,
+				redirect: 'follow'
+			});
+
+			console.log('🧪 API Response status:', response.status);
+			if (response.ok) {
+				const result = await response.json();
+				console.log('🧪 API Response data:', result);
+				return result;
+			} else {
+				const errorText = await response.text();
+				console.error('🧪 API Error:', response.status, errorText);
+				return null;
+			}
+		} catch (error) {
+			console.error('🧪 API Request failed:', error);
+			return null;
+		}
+	};
+
 	// Debug reactive statement to track placeholder visibility
 	$: {
 		const showMessages = $settings?.landingPageMode === 'chat' || createMessagesList(history, history.currentId).length > 0 || (chatHistory && chatHistory.length > 0);
@@ -2423,27 +2548,36 @@
 
 	// Function to convert chatHistory to proper message format and integrate with history
 	const integrateChatHistoryIntoMessages = (chatHistory, currentHistory) => {
+		console.log('🔄 Starting integration with chatHistory:', chatHistory?.length || 0, 'messages');
+		console.log('🔄 Current history has:', Object.keys(currentHistory?.messages || {}).length, 'messages');
+		console.log('🔄 Current history currentId:', currentHistory?.currentId);
+
 		if (!chatHistory || chatHistory.length === 0) {
+			console.log('❌ No chat history to integrate');
 			return currentHistory;
 		}
 
 		const integratedHistory = { ...currentHistory };
 		let lastMessageId = null;
 		let firstHistoryMessageId = null;
+		const originalCurrentId = currentHistory.currentId;
 
 		// Convert each chat history item into proper message format
 		chatHistory.forEach((msg, index) => {
-			if (msg.prompt) {
+			console.log(`🔄 Processing history item ${index}:`, msg);
+
+			if (msg.user) {
 				// Create user message
 				const userMessageId = `history-user-${index}`;
 				if (!firstHistoryMessageId) firstHistoryMessageId = userMessageId;
 
+				console.log(`✅ Creating user message ${userMessageId}:`, msg.user);
 				integratedHistory.messages[userMessageId] = {
 					id: userMessageId,
 					parentId: lastMessageId,
 					childrenIds: [],
 					role: 'user',
-					content: msg.prompt,
+					content: msg.user,
 					timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
 					models: selectedModels || ['static-model']
 				};
@@ -2458,6 +2592,7 @@
 				// Create assistant message
 				const assistantMessageId = `history-assistant-${index}`;
 
+				console.log(`✅ Creating assistant message ${assistantMessageId}:`, msg.system);
 				integratedHistory.messages[assistantMessageId] = {
 					id: assistantMessageId,
 					parentId: lastMessageId,
@@ -2477,15 +2612,25 @@
 		});
 
 		// If there are existing messages, connect them to the chat history
-		if (currentHistory.currentId && lastMessageId) {
-			integratedHistory.messages[currentHistory.currentId].parentId = lastMessageId;
+		if (originalCurrentId && lastMessageId) {
+			integratedHistory.messages[originalCurrentId].parentId = lastMessageId;
 			if (integratedHistory.messages[lastMessageId]) {
-				integratedHistory.messages[lastMessageId].childrenIds.push(currentHistory.currentId);
+				integratedHistory.messages[lastMessageId].childrenIds.push(originalCurrentId);
 			}
-		} else if (firstHistoryMessageId) {
-			// If no current messages, set the first history message as current
+			// Set currentId to the original current message to show full conversation including history
+			integratedHistory.currentId = originalCurrentId;
+		} else if (lastMessageId) {
+			// If no current messages, set the last history message as current
 			integratedHistory.currentId = lastMessageId;
+		} else if (firstHistoryMessageId) {
+			// Fallback to first history message
+			integratedHistory.currentId = firstHistoryMessageId;
 		}
+
+		console.log('🔄 Integration complete - setting currentId to:', integratedHistory.currentId);
+		console.log('🔄 Total messages in integrated history:', Object.keys(integratedHistory.messages).length);
+		console.log('🔄 Available message IDs:', Object.keys(integratedHistory.messages));
+		console.log('🔄 Current message exists:', !!integratedHistory.messages[integratedHistory.currentId]);
 
 		return integratedHistory;
 	};

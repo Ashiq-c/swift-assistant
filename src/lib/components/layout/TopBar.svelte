@@ -20,7 +20,7 @@
 </script>
 
 <!-- Top Bar -->
-<div class="h-12 bg-white shadow-md flex items-center justify-between fixed top-0 left-0 right-0 z-50">
+<div class="h-12 bg-white shadow-md flex items-center justify-between fixed top-0 left-0 right-0 z-50  max-w-[97%] ml-[57px]">
 	<!-- Left side - Menu Button Only -->
 	<div class="flex items-center h-full">
 		<!-- Menu Toggle Button -->
