@@ -193,6 +193,13 @@
 		} else if (chatIdProp && isFrontendOnly) {
 			// Frontend-only mode: create a new chat without backend
 			console.log('🔧 Frontend-only mode: creating new chat without backend');
+			
+			// Clear chat history state for new chat
+			chatHistory = [];
+			loadingChatHistory = false;
+			lastLoadedChatId = '';
+			integratedChatId = null;
+			
 			chatId.set(chatIdProp);
 
 			// Initialize with empty history for new chat
@@ -494,7 +501,8 @@
 		pageSubscribe = page.subscribe(async (p) => {
 			if (p.url.pathname === '/') {
 				await tick();
-				initNewChat();
+				await initNewChat();
+				loading = false;
 			}
 		});
 
@@ -778,17 +786,16 @@
 
 	const initNewChat = async () => {
 		if ($user?.role !== 'admin' && $user?.permissions?.chat?.temporary_enforced) {
-			await temporaryChatEnabled.set(true);
+			temporaryChatEnabled.set(true);
 		}
 
 		// Simplified model setup - always use static model
 		selectedModels = ['static-model'];
-		console.log('Using static model configuration:', selectedModels);
 
-		await showControls.set(false);
-		await showCallOverlay.set(false);
-		await showOverview.set(false);
-		await showArtifacts.set(false);
+		showControls.set(false);
+		showCallOverlay.set(false);
+		showOverview.set(false);
+		showArtifacts.set(false);
 
 		if ($page.url.pathname.includes('/c/')) {
 			window.history.replaceState(history.state, '', `/`);
@@ -797,8 +804,8 @@
 		autoScroll = true;
 
 		resetInput();
-		await chatId.set('');
-		await chatTitle.set('');
+		chatId.set('');
+		chatTitle.set('');
 
 		history = {
 			messages: {},
@@ -811,6 +818,7 @@
 		// Reset chat history loading tracking
 		loadingChatHistory = false;
 		lastLoadedChatId = '';
+		integratedChatId = null;
 
 		// Clear any integrated chat history from the history object
 		history = {
@@ -887,22 +895,19 @@
 	};
 
 	const loadChat = async () => {
-		console.log('🔄 loadChat called with chatIdProp:', chatIdProp);
 		chatId.set(chatIdProp);
 
 		if ($temporaryChatEnabled) {
 			temporaryChatEnabled.set(false);
 		}
 
-		console.log('🔄 Calling getChatById with chatId:', $chatId);
 		chat = await getChatById(localStorage.token, $chatId).catch(async (error) => {
-			console.error('❌ getChatById failed:', error);
+			console.error('getChatById failed:', error);
 			await goto('/');
 			return null;
 		});
 
 		if (chat) {
-			console.log('🔍 Chat loaded for chatId:', $chatId, chat);
 			tags = await getTagsById(localStorage.token, $chatId).catch(async (error) => {
 				return [];
 			});
@@ -911,9 +916,6 @@
 			const chatContent = chat.chat || chat;
 
 			if (chatContent) {
-				console.log('🔍 Chat content:', chatContent);
-				console.log('🔍 Chat title:', chatContent.title);
-
 				selectedModels =
 					(chatContent?.models ?? undefined) !== undefined
 						? chatContent.models
@@ -933,30 +935,15 @@
 				chatTitle.set(chatContent.title);
 
 				// Load chat history immediately when chat is loaded
-				console.log('🔄 Loading chat history for chatId:', $chatId);
 				await loadChatHistoryOnce($chatId);
-				console.log('🔍 After loadChatHistoryOnce - chatHistory length:', chatHistory?.length || 0);
 
 				// Force immediate integration after loading chat history
 				await tick();
 				if (chatHistory && chatHistory.length > 0) {
-					console.log('🔄 Force integrating chat history immediately after load');
-					console.log('🔄 Before integration - history.currentId:', history.currentId);
-					console.log('🔄 Before integration - history.messages count:', Object.keys(history.messages).length);
 					history = integrateChatHistoryIntoMessages(chatHistory, history);
 					integratedChatId = $chatId;
-					console.log('✅ Force integration complete - history now has', Object.keys(history.messages).length, 'messages');
-					console.log('✅ After integration - history.currentId:', history.currentId);
-					console.log('✅ After integration - history.messages:', Object.keys(history.messages));
-
 					// Force a reactive update
 					await tick();
-					console.log('🔄 Forced reactive update after integration');
-				} else {
-					console.log('❌ No chat history to integrate:', {
-						chatHistoryExists: !!chatHistory,
-						chatHistoryLength: chatHistory?.length || 0
-					});
 				}
 
 				const userSettings = await getUserSettings(localStorage.token);
@@ -2444,8 +2431,13 @@
 	let lastLoadedChatId = '';
 
 	// Helper function to load chat history only once per chat
-	const loadChatHistoryOnce = async (chatId) => {
-		if (!chatId || chatId === '' || loadingChatHistory || lastLoadedChatId === chatId) {
+	const loadChatHistoryOnce = async (chatId, forceReload = false) => {
+		if (!chatId || chatId === '' || loadingChatHistory) {
+			return;
+		}
+
+		// Skip loading if already loaded for this chat, unless force reload is requested
+		if (!forceReload && lastLoadedChatId === chatId) {
 			return;
 		}
 
@@ -2453,20 +2445,14 @@
 		lastLoadedChatId = chatId;
 
 		try {
-			console.log('🔄 Loading chat history for chatId:', chatId);
-			console.log('🔍 API endpoint:', `${import.meta.env.VITE_API_BASE_URL}api/v1/chat-history/${chatId}/`);
 			const historyRes = await getChatHistory(chatId);
-			console.log('🔍 API response:', historyRes);
 			if (historyRes && historyRes.success && Array.isArray(historyRes.response)) {
 				chatHistory = historyRes.response;
-				console.log('✅ Chat history loaded successfully:', chatHistory.length, 'messages');
 			} else {
 				chatHistory = [];
-				console.log('❌ No chat history found or invalid response:', historyRes);
 			}
 		} catch (error) {
-			console.error('❌ Failed to load chat history:', error);
-			console.log('🔍 This might indicate the backend server is not running on port 8000');
+			console.error('Failed to load chat history:', error);
 			chatHistory = [];
 		} finally {
 			loadingChatHistory = false;
@@ -2536,24 +2522,18 @@
 		}
 	};
 
-	// Debug reactive statement to track placeholder visibility
-	$: {
-		const showMessages = $settings?.landingPageMode === 'chat' || createMessagesList(history, history.currentId).length > 0 || (chatHistory && chatHistory.length > 0);
-		console.log('🔍 Show messages container:', showMessages, {
-			landingPageMode: $settings?.landingPageMode,
-			currentMessagesCount: createMessagesList(history, history.currentId).length,
-			chatHistoryCount: chatHistory?.length || 0
-		});
-	}
+	// Check if messages should be shown
+	$: showMessages = $settings?.landingPageMode === 'chat' || createMessagesList(history, history.currentId).length > 0 || (chatHistory && chatHistory.length > 0);
 
 	// Function to convert chatHistory to proper message format and integrate with history
 	const integrateChatHistoryIntoMessages = (chatHistory, currentHistory) => {
-		console.log('🔄 Starting integration with chatHistory:', chatHistory?.length || 0, 'messages');
-		console.log('🔄 Current history has:', Object.keys(currentHistory?.messages || {}).length, 'messages');
-		console.log('🔄 Current history currentId:', currentHistory?.currentId);
-
 		if (!chatHistory || chatHistory.length === 0) {
-			console.log('❌ No chat history to integrate');
+			return currentHistory;
+		}
+
+		// Check if history is already integrated to avoid duplicate work
+		const hasHistoryMessages = Object.keys(currentHistory?.messages ?? {}).some(id => id.startsWith('history-'));
+		if (hasHistoryMessages) {
 			return currentHistory;
 		}
 
@@ -2564,14 +2544,10 @@
 
 		// Convert each chat history item into proper message format
 		chatHistory.forEach((msg, index) => {
-			console.log(`🔄 Processing history item ${index}:`, msg);
-
 			if (msg.user) {
 				// Create user message
 				const userMessageId = `history-user-${index}`;
 				if (!firstHistoryMessageId) firstHistoryMessageId = userMessageId;
-
-				console.log(`✅ Creating user message ${userMessageId}:`, msg.user);
 				integratedHistory.messages[userMessageId] = {
 					id: userMessageId,
 					parentId: lastMessageId,
@@ -2591,8 +2567,6 @@
 			if (msg.system) {
 				// Create assistant message
 				const assistantMessageId = `history-assistant-${index}`;
-
-				console.log(`✅ Creating assistant message ${assistantMessageId}:`, msg.system);
 				integratedHistory.messages[assistantMessageId] = {
 					id: assistantMessageId,
 					parentId: lastMessageId,
@@ -2627,11 +2601,6 @@
 			integratedHistory.currentId = firstHistoryMessageId;
 		}
 
-		console.log('🔄 Integration complete - setting currentId to:', integratedHistory.currentId);
-		console.log('🔄 Total messages in integrated history:', Object.keys(integratedHistory.messages).length);
-		console.log('🔄 Available message IDs:', Object.keys(integratedHistory.messages));
-		console.log('🔄 Current message exists:', !!integratedHistory.messages[integratedHistory.currentId]);
-
 		return integratedHistory;
 	};
 
@@ -2640,14 +2609,9 @@
 
 	// Reactive statement as backup integration (only if not already integrated)
 	$: if (chatHistory && chatHistory.length > 0 && $chatId && integratedChatId !== $chatId) {
-		const hasHistoryMessages = Object.keys(history?.messages ?? {}).some(id => id.startsWith('history-'));
-
-		if (!hasHistoryMessages) {
-			console.log('� Backup integration for chatId:', $chatId, 'with', chatHistory.length, 'messages');
-			history = integrateChatHistoryIntoMessages(chatHistory, history);
-			integratedChatId = $chatId;
-			console.log('✅ Backup integration complete');
-		}
+		// Only integrate if we haven't already integrated for this chat
+		history = integrateChatHistoryIntoMessages(chatHistory, history);
+		integratedChatId = $chatId;
 	}
 
 	// Reset integration tracking and chat history when starting new chat
@@ -2656,14 +2620,12 @@
 		if (!$chatId) {
 			// Clear chat history for new chats
 			chatHistory = [];
-			console.log('🔄 Starting new chat - cleared chat history');
 		}
 	}
 
-	// Debug reactive statement to track chatId changes
-	$: if ($chatId) {
-		console.log('🔍 ChatId changed to:', $chatId);
-		// Load chat history when chatId changes (as a backup)
+	// Load chat history only when needed (as a backup mechanism)
+	$: if ($chatId && $chatId !== '' && lastLoadedChatId !== $chatId && !loadingChatHistory) {
+		// Only load if we haven't already loaded for this chat ID and not currently loading
 		loadChatHistoryOnce($chatId);
 	}
 
