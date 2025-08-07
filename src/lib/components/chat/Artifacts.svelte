@@ -4,7 +4,7 @@
 	const i18n = getContext('i18n');
 	const dispatch = createEventDispatcher();
 
-	import { artifactCode, chatId, settings, showArtifacts, showControls } from '$lib/stores';
+	import { artifactCode, chatId, settings, showArtifacts, showControls, showSidebar } from '$lib/stores';
 	import { copyToClipboard, createMessagesList } from '$lib/utils';
 
 	import XMark from '../icons/XMark.svelte';
@@ -196,6 +196,11 @@
 	const iframeLoadHandler = () => {
 		console.log('🖼️ Iframe loaded');
 		console.log('🖼️ Iframe content window:', !!iframeElement.contentWindow);
+
+
+		// hide sidebar
+		showSidebar.set(false);
+
 		if (iframeElement.contentWindow?.document?.body) {
 			console.log('🖼️ Iframe body content:', iframeElement.contentWindow.document.body.innerHTML.substring(0, 200) + '...');
 		}
@@ -264,18 +269,18 @@
 			<div
 				class="pointer-events-auto z-20 flex justify-between items-center p-2.5 font-primar text-gray-900 dark:text-white flex-shrink-0"
 			>
-				<button
+				<!-- <button
 					class="self-center pointer-events-auto p-1 rounded-full bg-white dark:bg-gray-850"
 					on:click={() => {
 						showArtifacts.set(false);
 					}}
 				>
 					<ArrowLeft className="size-3.5 text-gray-900 dark:text-white" />
-				</button>
+				</button> -->
 
 				<div class="flex-1 flex items-center justify-between pr-1">
 					<div class="flex items-center space-x-2">
-						<div class="flex items-center gap-0.5 self-center min-w-fit" dir="ltr">
+						<!-- <div class="flex items-center gap-0.5 self-center min-w-fit" dir="ltr">
 							<button
 								class="self-center p-1 hover:bg-black/5 dark:hover:bg-white/5 dark:hover:text-white hover:text-black rounded-md transition disabled:cursor-not-allowed"
 								on:click={() => navigateContent('prev')}
@@ -324,7 +329,7 @@
 									/>
 								</svg>
 							</button>
-						</div>
+						</div> -->
 					</div>
 
 					<div class="flex items-center gap-1.5">

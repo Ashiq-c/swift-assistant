@@ -10,7 +10,8 @@
 		settings,
 		showArtifacts,
 		showControls,
-		showOverview
+		showOverview,
+		showSidebar
 	} from '$lib/stores';
 	import FloatingButtons from '../ContentRenderer/FloatingButtons.svelte';
 	import { createMessagesList } from '$lib/utils';
@@ -201,6 +202,9 @@
 
 				await showControls.set(true);
 				console.log('✅ showControls set to true');
+
+				await showSidebar.set(false);
+				console.log('✅ showSidebar set to false');
 
 				console.log('🎬 All stores set successfully');
 			} catch (error) {
