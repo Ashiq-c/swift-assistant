@@ -550,19 +550,24 @@
 		}
 
 		showControls.subscribe(async (value) => {
+			console.log('🎛️ Chat showControls changed to:', value, 'mobile:', $mobile);
+
 			if (controlPane && !$mobile) {
 				try {
 					if (value) {
+						console.log('🎛️ Opening control pane...');
 						controlPaneComponent.openPane();
 					} else {
+						console.log('🎛️ Collapsing control pane...');
 						controlPane.collapse();
 					}
 				} catch (e) {
-					// ignore
+					console.error('🎛️ Error with control pane:', e);
 				}
 			}
 
 			if (!value) {
+				console.log('🎛️ Resetting overlay states...');
 				showCallOverlay.set(false);
 				showOverview.set(false);
 				showArtifacts.set(false);

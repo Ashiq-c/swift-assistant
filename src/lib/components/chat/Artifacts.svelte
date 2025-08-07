@@ -32,9 +32,59 @@
 		getContents();
 	}
 
+	// Also update contents when artifactCode changes (but avoid duplicate calls)
+	let lastArtifactCode = null;
+	$: if ($artifactCode !== lastArtifactCode) {
+		lastArtifactCode = $artifactCode;
+		getContents();
+	}
+
 	const getContents = () => {
 		contents = [];
-		messages.forEach((message) => {
+		console.log('getContents called, processing', messages.length, 'messages');
+
+		// Check if we have artifactCode from preview
+		if ($artifactCode && typeof $artifactCode === 'string' && $artifactCode.trim()) {
+			console.log('Using artifactCode from preview:', ($artifactCode as string).substring(0, 100) + '...');
+
+			const code = $artifactCode as string;
+			let renderedContent = '';
+
+			// Check if the code is already a complete HTML document
+			if (code.includes('<!DOCTYPE html>') || code.includes('<html')) {
+				// Use the code as-is if it's already a complete HTML document
+				renderedContent = code;
+			} else {
+				// Wrap the code in a basic HTML structure
+				renderedContent = `
+					<!DOCTYPE html>
+					<html lang="en">
+					<head>
+						<meta charset="UTF-8">
+						<meta name="viewport" content="width=device-width, initial-scale=1.0">
+						<style>
+							body {
+								background-color: white;
+								margin: 0;
+								padding: 0;
+							}
+						</style>
+					</head>
+					<body>
+						${code}
+					</body>
+					</html>
+				`;
+			}
+
+			contents = [{ type: 'iframe', content: renderedContent }];
+			selectedContentIdx = 0;
+			console.log('Created content from artifactCode, length:', renderedContent.length);
+			console.log('Content preview:', renderedContent.substring(0, 200) + '...');
+			return;
+		}
+
+		messages.forEach((message, idx) => {
 			if (message?.role !== 'user' && message?.content) {
 				const codeBlockContents = message.content.match(/```[\s\S]*?```/g);
 				let codeBlocks = [];
@@ -111,6 +161,7 @@
                         </html>
                     `;
 					contents = [...contents, { type: 'iframe', content: renderedContent }];
+					console.log('Added iframe content, total contents:', contents.length);
 				} else {
 					// Check for SVG content
 					for (const block of codeBlocks) {
@@ -123,6 +174,7 @@
 		});
 
 		if (contents.length === 0) {
+			console.log('No contents found, hiding artifacts');
 			showControls.set(false);
 			showArtifacts.set(false);
 		}
@@ -142,6 +194,12 @@
 	}
 
 	const iframeLoadHandler = () => {
+		console.log('🖼️ Iframe loaded');
+		console.log('🖼️ Iframe content window:', !!iframeElement.contentWindow);
+		if (iframeElement.contentWindow?.document?.body) {
+			console.log('🖼️ Iframe body content:', iframeElement.contentWindow.document.body.innerHTML.substring(0, 200) + '...');
+		}
+
 		iframeElement.contentWindow.addEventListener(
 			'click',
 			function (e) {
@@ -195,20 +253,16 @@
 	};
 
 	onMount(() => {
-		artifactCode.subscribe((value) => {
-			if (contents) {
-				const codeIdx = contents.findIndex((content) => content.content.includes(value));
-				selectedContentIdx = codeIdx !== -1 ? codeIdx : 0;
-			}
-		});
+		// Removed artifactCode subscription as it's now handled by reactive statements
 	});
 </script>
 
 <div class=" w-full h-full relative flex flex-col bg-gray-50 dark:bg-gray-850">
 	<div class="w-full h-full flex flex-col flex-1 relative">
 		{#if contents.length > 0}
+			<!-- Header with close buttons -->
 			<div
-				class="pointer-events-auto z-20 flex justify-between items-center p-2.5 font-primar text-gray-900 dark:text-white"
+				class="pointer-events-auto z-20 flex justify-between items-center p-2.5 font-primar text-gray-900 dark:text-white flex-shrink-0"
 			>
 				<button
 					class="self-center pointer-events-auto p-1 rounded-full bg-white dark:bg-gray-850"
@@ -216,7 +270,7 @@
 						showArtifacts.set(false);
 					}}
 				>
-					<ArrowLeft className="size-3.5  text-gray-900 dark:text-white" />
+					<ArrowLeft className="size-3.5 text-gray-900 dark:text-white" />
 				</button>
 
 				<div class="flex-1 flex items-center justify-between pr-1">
@@ -325,8 +379,9 @@
 			<div class=" absolute top-0 left-0 right-0 bottom-0 z-10"></div>
 		{/if}
 
-		<div class="flex-1 w-full h-full">
-			<div class=" h-full flex flex-col">
+		<!-- Content area - takes remaining space after header -->
+		<div class="flex-1 w-full overflow-hidden">
+			<div class="h-full flex flex-col">
 				{#if contents.length > 0}
 					<div class="max-w-full w-full h-full">
 						{#if contents[selectedContentIdx].type === 'iframe'}
@@ -351,7 +406,7 @@
 					</div>
 				{:else}
 					<div class="m-auto font-medium text-xs text-gray-900 dark:text-white">
-						{$i18n.t('No HTML, CSS, or JavaScript content found.')}
+						No HTML, CSS, or JavaScript content found.
 					</div>
 				{/if}
 			</div>

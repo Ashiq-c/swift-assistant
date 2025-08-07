@@ -180,11 +180,32 @@
 			}
 		}}
 		onPreview={async (value) => {
-			console.log('Preview', value);
-			await artifactCode.set(value);
-			await showControls.set(true);
-			await showArtifacts.set(true);
-			await showOverview.set(false);
+			console.log('🎬 ContentRenderer onPreview called');
+			console.log('🎬 Value length:', value?.length);
+			console.log('🎬 Value preview:', value?.substring(0, 200) + '...');
+
+			try {
+				// Clear any existing artifactCode first
+				await artifactCode.set(null);
+				await tick();
+
+				// Set the new artifactCode
+				await artifactCode.set(value);
+				console.log('✅ artifactCode set');
+
+				await showOverview.set(false);
+				console.log('✅ showOverview set to false');
+
+				await showArtifacts.set(true);
+				console.log('✅ showArtifacts set to true');
+
+				await showControls.set(true);
+				console.log('✅ showControls set to true');
+
+				console.log('🎬 All stores set successfully');
+			} catch (error) {
+				console.error('❌ Error setting stores:', error);
+			}
 		}}
 	/>
 </div>

@@ -18,6 +18,7 @@
 	import ChevronUpDown from '$lib/components/icons/ChevronUpDown.svelte';
 	import CommandLine from '$lib/components/icons/CommandLine.svelte';
 	import Cube from '$lib/components/icons/Cube.svelte';
+  	import { showSidebar, user } from '$lib/stores';
 
 	const i18n = getContext('i18n');
 
@@ -90,6 +91,7 @@
 	};
 
 	const previewCode = () => {
+		console.log('Preview button clicked for:', lang);
 		onPreview(code);
 	};
 
@@ -328,7 +330,7 @@
 					{#if preview && ['html', 'svg'].includes(lang)}
 						<button
 							class="flex gap-1 items-center run-code-button bg-none border-none bg-gray-50 hover:bg-gray-100 dark:bg-gray-850 dark:hover:bg-gray-800 transition rounded-md px-1.5 py-0.5"
-							on:click={previewCode}
+							on:click={() => { previewCode(); showSidebar.set(false); }}
 						>
 							<div class=" -translate-y-[0.5px]">
 								<Cube className="size-3" />

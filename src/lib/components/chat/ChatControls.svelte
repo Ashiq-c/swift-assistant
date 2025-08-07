@@ -6,6 +6,14 @@
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { mobile, showControls, showCallOverlay, showOverview, showArtifacts } from '$lib/stores';
 
+	// Debug store changes
+	$: console.log('🎛️ ChatControls store states:', {
+		showControls: $showControls,
+		showArtifacts: $showArtifacts,
+		showOverview: $showOverview,
+		showCallOverlay: $showCallOverlay
+	});
+
 	import Modal from '../common/Modal.svelte';
 	import Controls from './Controls/Controls.svelte';
 	import CallOverlay from './MessageInput/CallOverlay.svelte';
@@ -38,10 +46,27 @@
 	let minSize = 0;
 
 	export const openPane = () => {
-		if (parseInt(localStorage?.chatControlsSize)) {
-			pane.resize(parseInt(localStorage?.chatControlsSize));
-		} else {
-			pane.resize(minSize);
+		console.log('🎛️ ChatControls openPane called');
+		console.log('🎛️ pane:', pane);
+		console.log('🎛️ minSize:', minSize);
+		console.log('🎛️ localStorage chatControlsSize:', localStorage?.chatControlsSize);
+
+		if (!pane) {
+			console.error('🎛️ Pane is not initialized!');
+			return;
+		}
+
+		try {
+			const targetSize = parseInt(localStorage?.chatControlsSize) || Math.max(minSize, 30); // Ensure minimum 30% width
+			console.log('🎛️ Resizing pane to:', targetSize);
+			pane.resize(targetSize);
+
+			// Verify the resize worked
+			setTimeout(() => {
+				console.log('🎛️ Pane size after resize:', pane.getSize(), 'isExpanded:', pane.isExpanded());
+			}, 100);
+		} catch (error) {
+			console.error('🎛️ Error resizing pane:', error);
 		}
 	};
 
@@ -91,13 +116,16 @@
 		const resizeObserver = new ResizeObserver((entries) => {
 			for (let entry of entries) {
 				const width = entry.contentRect.width;
-				// calculate the percentage of 200px
+				// calculate the percentage of 350px
 				const percentage = (350 / width) * 100;
 				// set the minSize to the percentage, must be an integer
 				minSize = Math.floor(percentage);
 
+				console.log('🎛️ ResizeObserver - width:', width, 'percentage:', percentage, 'minSize:', minSize);
+
 				if ($showControls) {
 					if (pane && pane.isExpanded() && pane.getSize() < minSize) {
+						console.log('🎛️ ResizeObserver - resizing pane to minSize:', minSize);
 						pane.resize(minSize);
 					}
 				}
@@ -204,15 +232,17 @@
 			bind:pane
 			defaultSize={0}
 			onResize={(size) => {
-				console.log('size', size, minSize);
+				console.log('🎛️ Pane onResize - size:', size, 'minSize:', minSize, 'showControls:', $showControls);
 
-				if ($showControls && pane.isExpanded()) {
+				if ($showControls && pane && pane.isExpanded()) {
+					console.log('🎛️ Pane is expanded, checking size constraints');
 					if (size < minSize) {
+						console.log('🎛️ Size too small, resizing to minSize:', minSize);
 						pane.resize(minSize);
 					}
 
 					if (size < minSize) {
-						localStorage.chatControlsSize = 0;
+						localStorage.chatControlsSize = minSize;
 					} else {
 						localStorage.chatControlsSize = size;
 					}
@@ -222,7 +252,7 @@
 				showControls.set(false);
 			}}
 			collapsible={true}
-			class=" z-10 "
+			class=" z-60 top-[50px] relative"
 		>
 			{#if $showControls}
 				<div class="flex max-h-full min-h-full">
