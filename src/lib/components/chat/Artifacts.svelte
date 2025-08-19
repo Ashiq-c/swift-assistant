@@ -18,34 +18,46 @@
 	export let history;
 	let messages = [];
 
-	let contents: Array<{ type: string; content: string }> = [];
+	let contents: Array<{ type: string; content: string; id?: string }> = [];
 	let selectedContentIdx = 0;
 
 	let copied = false;
 	let iframeElement: HTMLIFrameElement;
+	let iframeKey = 0; // Force iframe refresh
 
+	// Update messages when history changes
 	$: if (history) {
 		messages = createMessagesList(history, history.currentId);
-		getContents();
 	} else {
 		messages = [];
-		getContents();
 	}
 
-	// Also update contents when artifactCode changes (but avoid duplicate calls)
-	let lastArtifactCode = null;
+	// Process contents when artifactCode changes - this takes priority
+	let lastArtifactCode: string | null = null;
 	$: if ($artifactCode !== lastArtifactCode) {
+		console.log('🔄 artifactCode changed from', lastArtifactCode ? 'value' : 'null', 'to', $artifactCode ? 'value' : 'null');
 		lastArtifactCode = $artifactCode;
-		getContents();
+		processArtifactCode();
 	}
 
-	const getContents = () => {
-		contents = [];
-		console.log('getContents called, processing', messages.length, 'messages');
+	// Process contents when messages change, but only if no artifactCode
+	$: if (messages && messages.length > 0 && !$artifactCode) {
+		console.log('📝 Processing messages because no artifactCode');
+		processMessages();
+	}
 
-		// Check if we have artifactCode from preview
+	// Process artifactCode exclusively - this takes priority over everything
+	const processArtifactCode = () => {
+		console.log('🎯 processArtifactCode called');
+		console.log('🔍 Current artifactCode:', $artifactCode ? 'HAS_VALUE' : 'NULL');
+
+		// Always clear contents first to prevent any previous content
+		console.log('🧹 Clearing contents array...');
+		contents = [];
+		selectedContentIdx = 0;
+
 		if ($artifactCode && typeof $artifactCode === 'string' && $artifactCode.trim()) {
-			console.log('Using artifactCode from preview:', ($artifactCode as string).substring(0, 100) + '...');
+			console.log('📄 Processing artifactCode preview:', ($artifactCode as string).substring(0, 100) + '...');
 
 			const code = $artifactCode as string;
 			let renderedContent = '';
@@ -54,6 +66,7 @@
 			if (code.includes('<!DOCTYPE html>') || code.includes('<html')) {
 				// Use the code as-is if it's already a complete HTML document
 				renderedContent = code;
+				console.log('✅ Using complete HTML document');
 			} else {
 				// Wrap the code in a basic HTML structure
 				renderedContent = `
@@ -64,7 +77,6 @@
 						<meta name="viewport" content="width=device-width, initial-scale=1.0">
 						<style>
 							body {
-								background-color: white;
 								margin: 0;
 								padding: 0;
 							}
@@ -75,14 +87,31 @@
 					</body>
 					</html>
 				`;
+				console.log('✅ Wrapped code in HTML structure');
 			}
 
-			contents = [{ type: 'iframe', content: renderedContent }];
+			// Force iframe refresh by incrementing key and adding unique ID
+			iframeKey++;
+			const uniqueId = `artifact-${Date.now()}-${iframeKey}`;
+
+			contents = [{ type: 'iframe', content: renderedContent, id: uniqueId }];
 			selectedContentIdx = 0;
-			console.log('Created content from artifactCode, length:', renderedContent.length);
-			console.log('Content preview:', renderedContent.substring(0, 200) + '...');
-			return;
+			console.log('✅ Created SINGLE content from artifactCode, length:', renderedContent.length, 'id:', uniqueId);
+		} else {
+			console.log('❌ artifactCode cleared - will process messages if available');
+			// If artifactCode is cleared and we have messages, process them
+			if (messages && messages.length > 0) {
+				processMessages();
+			}
 		}
+	};
+
+	// Process messages only when no artifactCode is available
+	const processMessages = () => {
+		console.log('📝 processMessages called');
+
+		// Always clear contents first
+		contents = [];
 
 		messages.forEach((message, idx) => {
 			if (message?.role !== 'user' && message?.content) {
@@ -144,10 +173,6 @@
                             <meta charset="UTF-8">
                             <meta name="viewport" content="width=device-width, initial-scale=1.0">
 							<${''}style>
-								body {
-									background-color: white; /* Ensure the iframe has a white background */
-								}
-
 								${cssContent}
 							</${''}style>
                         </head>
@@ -162,6 +187,7 @@
                     `;
 					contents = [...contents, { type: 'iframe', content: renderedContent }];
 					console.log('Added iframe content, total contents:', contents.length);
+					console.log('-------------------------renderedContent-------------------------', renderedContent)
 				} else {
 					// Check for SVG content
 					for (const block of codeBlocks) {
@@ -390,18 +416,20 @@
 				{#if contents.length > 0}
 					<div class="max-w-full w-full h-full">
 						{#if contents[selectedContentIdx].type === 'iframe'}
-							<iframe
-								bind:this={iframeElement}
-								title="Content"
-								srcdoc={contents[selectedContentIdx].content}
-								class="w-full border-0 h-full rounded-none"
-								sandbox="allow-scripts allow-downloads{($settings?.iframeSandboxAllowForms ?? false)
-									? ' allow-forms'
-									: ''}{($settings?.iframeSandboxAllowSameOrigin ?? false)
-									? ' allow-same-origin'
-									: ''}"
-								on:load={iframeLoadHandler}
-							></iframe>
+							{#key contents[selectedContentIdx].id || contents[selectedContentIdx].content}
+								<iframe
+									bind:this={iframeElement}
+									title="Content"
+									srcdoc={contents[selectedContentIdx].content}
+									class="w-full border-0 h-full rounded-none"
+									sandbox="allow-scripts allow-downloads{($settings?.iframeSandboxAllowForms ?? false)
+										? ' allow-forms'
+										: ''}{($settings?.iframeSandboxAllowSameOrigin ?? false)
+										? ' allow-same-origin'
+										: ''}"
+									on:load={iframeLoadHandler}
+								></iframe>
+							{/key}
 						{:else if contents[selectedContentIdx].type === 'svg'}
 							<SvgPanZoom
 								className=" w-full h-full max-h-full overflow-hidden"

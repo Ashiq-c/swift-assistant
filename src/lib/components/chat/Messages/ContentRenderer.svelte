@@ -186,13 +186,20 @@
 			console.log('🎬 Value preview:', value?.substring(0, 200) + '...');
 
 			try {
-				// Clear any existing artifactCode first
+				// Clear any existing artifactCode first to prevent duplicates
+				console.log('🧹 Clearing existing artifactCode...');
 				await artifactCode.set(null);
 				await tick();
+				console.log('✅ artifactCode cleared, waiting for processing...');
+
+				// Wait a bit more to ensure the clearing is processed and iframe is refreshed
+				await new Promise(resolve => setTimeout(resolve, 200));
 
 				// Set the new artifactCode
+				console.log('📝 Setting new artifactCode...');
 				await artifactCode.set(value);
-				console.log('✅ artifactCode set');
+				console.log('✅ artifactCode set with value length:', value?.length);
+				console.log('🎯 Preview should now show ONLY new content');
 
 				await showOverview.set(false);
 				console.log('✅ showOverview set to false');

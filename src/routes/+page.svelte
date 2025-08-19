@@ -193,7 +193,7 @@
 	<div class="w-full absolute top-0 left-0 right-0 h-8 drag-region" />
 
 	{#if loaded}
-		<div class="fixed m-10 z-50 animate-fade-in">
+		<!-- <div class="fixed m-10 z-50 animate-fade-in">
 			<div class="flex space-x-2">
 				<div class=" self-center">
 					<div class="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
@@ -201,7 +201,7 @@
 					</div>
 				</div>
 			</div>
-		</div>
+		</div> -->
 
 		<div class="relative z-50 w-full h-full px-5 py-4">
 			<div class="w-full h-full flex justify-center items-center">
