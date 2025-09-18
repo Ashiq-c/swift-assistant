@@ -15,30 +15,38 @@
 
   $: currentErrors = $errors;
 
+  let loadingPromise = null;
+
   // Load languages from API on component mount
   onMount(async () => {
+    // Prevent multiple simultaneous API calls
+    if (loadingPromise) {
+      return loadingPromise;
+    }
+
+    loadingPromise = loadLanguages();
+    return loadingPromise;
+  });
+
+  async function loadLanguages() {
     try {
       loading = true;
       error = null;
 
-      console.log('Loading languages from API...');
       const fetchedLanguages = await fetchLanguages();
-      console.log('Fetched languages:', fetchedLanguages);
 
-      languages = fetchedLanguages;
-
-      // Use all languages for secondary selection (excluding primary)
-      secondaryLanguages = fetchedLanguages;
-
-      console.log('Languages loaded successfully:', languages.length, 'languages');
+      // Force reactivity by creating new arrays
+      languages = [...fetchedLanguages];
+      secondaryLanguages = [...fetchedLanguages];
 
     } catch (err) {
       console.error('Failed to load languages:', err);
-      error = 'Failed to load languages. Using default options.';
+      error = 'Failed to load languages. Using fallback options.';
     } finally {
       loading = false;
+      loadingPromise = null;
     }
-  });
+  }
 
   function getLanguageName(code) {
     return getLanguageNameUtil(code, languages);
@@ -54,8 +62,6 @@
 </script>
 
 <div class="space-y-6">
-
-
   <!-- Primary Language -->
   <div>
     <div class="flex items-center mb-3">

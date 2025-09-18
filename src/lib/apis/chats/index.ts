@@ -1081,9 +1081,51 @@ export const sendChatMessage = async (chatId: string, prompt: string) => {
             throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
 
-        const result = await response.json();
-        console.log('✅ API response received:', result);
-        return result;
+        // Check if response is streaming (SSE format)
+        const contentType = response.headers.get('content-type') || '';
+        console.log('📋 Response content-type:', contentType);
+
+        if (contentType.includes('text/event-stream')) {
+            // Handle Server-Sent Events streaming response
+            const responseText = await response.text();
+            console.log('📡 Raw SSE response:', responseText.substring(0, 200) + '...');
+
+            // Parse SSE format and collect all tokens
+            const lines = responseText.split('\n');
+            let fullResponse = '';
+            let lastValidData = null;
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const jsonStr = line.substring(6); // Remove "data: " prefix
+                        if (jsonStr.trim() && jsonStr !== '[DONE]') {
+                            const data = JSON.parse(jsonStr);
+                            if (data.token) {
+                                fullResponse += data.token;
+                            }
+                            lastValidData = data;
+                        }
+                    } catch (parseError) {
+                        console.warn('⚠️ Failed to parse SSE line:', line, parseError);
+                    }
+                }
+            }
+
+            console.log('✅ Parsed streaming response:', { fullResponse, lastValidData });
+
+            // Return in the format expected by the frontend
+            return {
+                success: true,
+                response: fullResponse,
+                data: lastValidData
+            };
+        } else {
+            // Handle regular JSON response
+            const result = await response.json();
+            console.log('✅ API response received:', result);
+            return result;
+        }
         
     } catch (err) {
         error = err;

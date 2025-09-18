@@ -112,7 +112,11 @@ function parseAndSetErrors(errorMessage) {
           'grade_level': 'gradeLevel',
           'bot_role': 'botRole',
           'greeting_message': 'greetingMessage',
-          'conversation_starters': 'conversationStarters'
+          'conversation_starters': 'conversationStarters',
+          'curriculum_info': 'curriculumInfo',
+          'analysis_scales': 'gradingRubric',
+          'chatbot_files': 'knowledgeFiles', // Map to the field used by existing UI
+          'grading_rubric': 'gradingRubric'
         };
 
         const mappedField = fieldMapping[field] || field;

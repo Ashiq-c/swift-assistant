@@ -37,143 +37,130 @@ export async function createChatbot(chatbotData, options = { showAlerts: true })
   try {
     const apiBaseUrl = getApiBaseUrl();
     const url = `${apiBaseUrl}/v1/chatbots/chatbot-create/`;
-    
+
     console.log('Creating chatbot at:', url);
     console.log('Chatbot data:', chatbotData);
-    
-    // Create FormData for multipart/form-data submission
-    const formData = new FormData();
-    
-    // Add text fields
-    formData.append('name', chatbotData.name || '');
-    formData.append('description', chatbotData.description || '');
-    formData.append('curriculum_info', chatbotData.curriculum_info || '');
-    formData.append('select_from_curriculum', chatbotData.select_from_curriculum || '1');
-    formData.append('grade_level', chatbotData.grade_level || '');
-    formData.append('bot_role', chatbotData.bot_role || '');
-    formData.append('instructions', chatbotData.instructions || '');
-    formData.append('greeting_message', chatbotData.greeting_message || '');
-    formData.append('primary_language_id', chatbotData.primary_language_id || '');
-    formData.append('grading_rubric', chatbotData.grading_rubric || '');
 
-    // Add boolean fields as "1" or "0" strings
-    formData.append('real_time_web_search', chatbotData.real_time_web_search ? '1' : '0');
-    formData.append('file_upload_analysis', chatbotData.file_upload_analysis ? '1' : '0');
-    formData.append('image_upload_gpt_vision', chatbotData.image_upload_gpt_vision ? '1' : '0');
-    formData.append('create_images', chatbotData.create_images ? '1' : '0');
-    formData.append('drawing_tools', chatbotData.drawing_tools ? '1' : '0');
-    formData.append('canvas_edit_modify', chatbotData.canvas_edit_modify ? '1' : '0');
-    formData.append('pause_session', chatbotData.pause_session ? '1' : '0');
-    
-    // Add secondary language IDs as individual form fields
-    if (chatbotData.secondary_language_ids && chatbotData.secondary_language_ids.length > 0) {
-      chatbotData.secondary_language_ids.forEach((id, index) => {
-        formData.append(`secondary_language_ids[${index}]`, id);
-      });
-    }
+    // Check if we have actual files to upload
+    const hasFiles = chatbotData.chatbot_files && chatbotData.chatbot_files.length > 0 &&
+                    chatbotData.chatbot_files.some(file => file instanceof File && file.size > 0);
 
-    // Add conversation starters as individual form fields with 'text' property
-    if (chatbotData.conversation_starters && chatbotData.conversation_starters.length > 0) {
-      chatbotData.conversation_starters.forEach((starter, index) => {
-        formData.append(`conversation_starters[${index}]text`, starter.text || starter);
-      });
-    }
+    if (hasFiles) {
+      // Use FormData for file uploads with JSON data
+      const formData = new FormData();
 
-    // Add analysis scales as individual form fields
-    if (chatbotData.analysis_scales && chatbotData.analysis_scales.length > 0) {
-      chatbotData.analysis_scales.forEach((scale, index) => {
-        formData.append(`analysis_scales[${index}].level_name`, scale.level_name || '');
-        formData.append(`analysis_scales[${index}].description`, scale.description || '');
-        formData.append(`analysis_scales[${index}].color`, scale.color || '');
-      });
-    }
+      // Add all non-file data as individual form fields (Django REST Framework format)
+      formData.append('name', chatbotData.name || '');
+      formData.append('description', chatbotData.description || '');
+      formData.append('curriculum_info', chatbotData.curriculum_info || '');
+      formData.append('select_from_curriculum', chatbotData.select_from_curriculum ? '1' : '0');
+      formData.append('grade_level', chatbotData.grade_level || '');
+      formData.append('bot_role', chatbotData.bot_role || '');
+      formData.append('instructions', chatbotData.instructions || '');
+      formData.append('greeting_message', chatbotData.greeting_message || '');
+      formData.append('primary_language_id', chatbotData.primary_language_id || '');
+      formData.append('grading_rubric', chatbotData.grading_rubric || '');
+      formData.append('real_time_web_search', chatbotData.real_time_web_search ? '1' : '0');
+      formData.append('file_upload_analysis', chatbotData.file_upload_analysis ? '1' : '0');
+      formData.append('image_upload_gpt_vision', chatbotData.image_upload_gpt_vision ? '1' : '0');
+      formData.append('create_images', chatbotData.create_images ? '1' : '0');
+      formData.append('drawing_tools', chatbotData.drawing_tools ? '1' : '0');
+      formData.append('canvas_edit_modify', chatbotData.canvas_edit_modify ? '1' : '0');
+      formData.append('pause_session', chatbotData.pause_session ? '1' : '0');
 
-    // Add analysis scales as individual form fields
-    if (chatbotData.analysis_scales && chatbotData.analysis_scales.length > 0) {
-      chatbotData.analysis_scales.forEach((scale, index) => {
-        formData.append(`analysis_scales[${index}]level_name`, scale.level_name || '');
-        formData.append(`analysis_scales[${index}]description`, scale.description || '');
-        formData.append(`analysis_scales[${index}]color`, scale.color || '');
-      });
-    }
+      // Add secondary language IDs
+      if (chatbotData.secondary_language_ids && chatbotData.secondary_language_ids.length > 0) {
+        chatbotData.secondary_language_ids.forEach((langId, index) => {
+          formData.append(`secondary_language_ids[${index}]`, langId);
+        });
+      }
 
-    // Add chatbot files as individual form fields with 'file' property
-    console.log('chatbot_files data:', chatbotData.chatbot_files);
-    if (chatbotData.chatbot_files && chatbotData.chatbot_files.length > 0) {
-      console.log('Adding chatbot files to form data:', chatbotData.chatbot_files.length, 'files');
+      // Add conversation starters
+      if (chatbotData.conversation_starters && chatbotData.conversation_starters.length > 0) {
+        chatbotData.conversation_starters.forEach((starter, index) => {
+          formData.append(`conversation_starters[${index}].text`, starter.text || starter);
+        });
+      }
+
+      // Add analysis scales
+      if (chatbotData.analysis_scales && chatbotData.analysis_scales.length > 0) {
+        chatbotData.analysis_scales.forEach((scale, index) => {
+          formData.append(`analysis_scales[${index}].level_name`, scale.level_name || '');
+          formData.append(`analysis_scales[${index}].description`, scale.description || '');
+          formData.append(`analysis_scales[${index}].color`, scale.color || '');
+        });
+      }
+
+      // Add files
       chatbotData.chatbot_files.forEach((file, index) => {
-        console.log(`Processing file ${index}:`, file);
-        if (file instanceof File) {
-          console.log(`Adding file ${index} as File:`, file.name, file.size, 'bytes');
-          formData.append(`chatbot_files[${index}]file`, file);
-        } else if (typeof file === 'string') {
-          console.log(`Adding file ${index} as string:`, file);
-          // Handle base64 or file path
-          formData.append(`chatbot_files[${index}]file`, file);
-        } else {
-          console.log(`Unknown file type for ${index}:`, typeof file, file);
+        if (file instanceof File && file.size > 0) {
+          formData.append(`chatbot_files[${index}].file`, file);
         }
       });
-    } else {
-      console.log('No chatbot_files found or empty array - creating dummy file');
-      // Backend requires at least one file, so create a dummy file if none provided
-      const dummyFile = new File([''], 'empty.txt', { type: 'text/plain' });
-      formData.append('chatbot_files[0]file', dummyFile);
-    }
-    
-    // Add picture file if provided
-    if (chatbotData.picture) {
+
+      // Add picture if provided
       if (chatbotData.picture instanceof File) {
         formData.append('picture', chatbotData.picture);
-      } else if (typeof chatbotData.picture === 'string' && chatbotData.picture.startsWith('data:')) {
-        // Convert base64 to blob if needed
-        const blob = dataURLtoBlob(chatbotData.picture);
-        formData.append('picture', blob, 'chatbot-image.jpg');
       }
-    }
-    
-    // Log FormData contents for debugging
-    console.log('FormData contents:');
-    for (let [key, value] of formData.entries()) {
-      if (key.includes('chatbot_files')) {
-        console.log(`🔥 FILE FIELD: ${key}`, value instanceof File ? `File: ${value.name} (${value.size} bytes)` : value);
-      } else {
-        console.log(key, value);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      console.log('Response:', result);
+
+      if (!response.ok) {
+        throw new Error(result.message || `HTTP error! status: ${response.status}`);
       }
-    }
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      body: formData,
-      // Don't set Content-Type header - let browser set it for multipart/form-data
-    });
-    
-    console.log('Response status:', response.status);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Error response:', errorText);
+      return result;
+    } else {
+      // No files - send as JSON
+      const jsonPayload = {
+        name: chatbotData.name || '',
+        description: chatbotData.description || '',
+        curriculum_info: chatbotData.curriculum_info || '',
+        select_from_curriculum: Boolean(chatbotData.select_from_curriculum),
+        grade_level: chatbotData.grade_level || '',
+        bot_role: chatbotData.bot_role || '',
+        instructions: chatbotData.instructions || '',
+        greeting_message: chatbotData.greeting_message || '',
+        primary_language_id: chatbotData.primary_language_id,
+        grading_rubric: chatbotData.grading_rubric || '',
+        real_time_web_search: Boolean(chatbotData.real_time_web_search),
+        file_upload_analysis: Boolean(chatbotData.file_upload_analysis),
+        image_upload_gpt_vision: Boolean(chatbotData.image_upload_gpt_vision),
+        create_images: Boolean(chatbotData.create_images),
+        drawing_tools: Boolean(chatbotData.drawing_tools),
+        canvas_edit_modify: Boolean(chatbotData.canvas_edit_modify),
+        pause_session: Boolean(chatbotData.pause_session),
+        secondary_language_ids: chatbotData.secondary_language_ids || [],
+        conversation_starters: chatbotData.conversation_starters || [],
+        analysis_scales: chatbotData.analysis_scales || [],
+        chatbot_files: []
+      };
 
-      // Show error alert if enabled
-      if (options.showAlerts) {
-        showNotification(`Error creating chatbot: ${response.status} - ${errorText}`, 'error');
+      console.log('JSON payload:', jsonPayload);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(jsonPayload),
+      });
+
+      const result = await response.json();
+      console.log('Response:', result);
+
+      if (!response.ok) {
+        throw new Error(result.message || `HTTP error! status: ${response.status}`);
       }
-      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+
+      return result;
     }
-
-    const result = await response.json();
-    console.log('Chatbot created successfully:', result);
-
-    // Check if the response indicates success and show appropriate alert
-    if (options.showAlerts) {
-      if (result.success === true) {
-        showNotification(result.message || 'Chatbot created successfully', 'success');
-      } else {
-        showNotification(result.message || 'Failed to create chatbot', 'error');
-      }
-    }
-
-    return result;
 
   } catch (error) {
     console.error('Error creating chatbot:', error);
@@ -223,54 +210,100 @@ export function transformConfigToApiFormat(config) {
     return array.map(safeParseInt).filter(val => val !== null);
   };
 
+  // Transform grading rubric to analysis scales
+  const createAnalysisScales = (gradingRubric) => {
+    const scales = [];
+
+    if (gradingRubric?.beginning) {
+      scales.push({
+        level_name: "Beginning",
+        description: gradingRubric.beginning,
+        color: "red"
+      });
+    }
+
+    if (gradingRubric?.emerging) {
+      scales.push({
+        level_name: "Emerging",
+        description: gradingRubric.emerging,
+        color: "yellow"
+      });
+    }
+
+    // If no custom scales, provide defaults
+    if (scales.length === 0) {
+      scales.push(
+        {
+          level_name: "Beginning",
+          description: "Basic understanding of concepts",
+          color: "red"
+        },
+        {
+          level_name: "Proficient",
+          description: "Good understanding and application",
+          color: "yellow"
+        },
+        {
+          level_name: "Advanced",
+          description: "Excellent mastery and problem-solving",
+          color: "green"
+        }
+      );
+    }
+
+    return scales;
+  };
+
   return {
+    // Required fields
     name: config.name || '',
+    primary_language_id: safeParseInt(config.primaryLanguage),
+
+    // Optional basic information
     description: config.description || '',
     curriculum_info: config.curriculumInfo || '',
-    select_from_curriculum: '1', // Default value
+
+    // Optional behavior & knowledge
+    select_from_curriculum: config.curriculumSelected ? '1' : '0',
     grade_level: config.gradeLevel || '',
     bot_role: config.botRole || '',
     instructions: config.instructions || '',
     greeting_message: config.greetingMessage || '',
-    primary_language_id: safeParseInt(config.primaryLanguage),
-    grading_rubric: config.gradingRubric?.description || '',
-    secondary_language_ids: safeParseIntArray(config.secondaryLanguages),
-    picture: config.image || null,
 
-    // Capability fields as booleans
+    // Optional grading
+    grading_rubric: typeof config.gradingRubric === 'string' ? config.gradingRubric :
+                   (config.gradingRubric?.description || ''),
+
+    // Optional language control
+    secondary_language_ids: safeParseIntArray(config.secondaryLanguages),
+
+    // Optional bot capabilities - map existing UI fields to API fields
     real_time_web_search: Boolean(config.capabilities?.webSearch),
     file_upload_analysis: Boolean(config.capabilities?.fileUpload),
     image_upload_gpt_vision: Boolean(config.capabilities?.imageUpload),
-    create_images: Boolean(config.capabilities?.createImages),
+    create_images: Boolean(config.capabilities?.imageCreation || config.capabilities?.createImages),
     drawing_tools: Boolean(config.capabilities?.drawingTools),
     canvas_edit_modify: Boolean(config.capabilities?.canvasEdit),
-    pause_session: Boolean(config.sessionControl?.pause),
 
-    // Array fields
+    // Optional session control - map existing UI fields
+    pause_session: Boolean(config.sessionControl?.pauseResume || config.sessionControl?.pause),
+
+    // Optional picture
+    picture: config.image || null,
+
+    // Required arrays (can be empty)
     conversation_starters: Array.isArray(config.conversationStarters) ?
       config.conversationStarters.map(text => ({
         text: typeof text === 'string' ? text : String(text)
       })) : [],
-    analysis_scales: [
-      {
-        level_name: "Beginning",
-        description: config.gradingRubric?.beginning || "Basic understanding",
-        color: "red"
-      },
-      {
-        level_name: "Proficient",
-        description: config.gradingRubric?.emerging || "Good understanding",
-        color: "yellow"
-      },
-      {
-        level_name: "Advanced",
-        description: "Excellent mastery",
-        color: "green"
-      }
-    ],
+
+    analysis_scales: createAnalysisScales(config.gradingRubric),
+
     chatbot_files: (() => {
-      console.log('transformConfigToApiFormat - knowledgeBase:', config.knowledgeBase);
-      const files = Array.isArray(config.knowledgeBase) ? config.knowledgeBase : [];
+      // Check both knowledgeBase and knowledgeFiles for compatibility with existing UI
+      const files = Array.isArray(config.knowledgeBase) ? config.knowledgeBase :
+                   Array.isArray(config.knowledgeFiles) ? config.knowledgeFiles : [];
+      console.log('transformConfigToApiFormat - chatbot_files from:', config.knowledgeBase ? 'knowledgeBase' : 'knowledgeFiles');
       console.log('transformConfigToApiFormat - chatbot_files result:', files);
       return files;
     })()

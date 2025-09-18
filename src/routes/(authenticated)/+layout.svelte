@@ -55,39 +55,84 @@
 	let showUpdateInfoToast = false;
 
 	const getModelsHandler = async () => {
-		models.set(await getModels(localStorage.token));
+		try {
+			models.set(await getModels(localStorage.token));
+		} catch (error) {
+			console.error('Failed to load models:', error);
+			models.set([]);
+		}
 	};
 
 	const getPromptsHandler = async () => {
-		prompts.set(await getPrompts(localStorage.token));
+		try {
+			prompts.set(await getPrompts(localStorage.token));
+		} catch (error) {
+			console.error('Failed to load prompts:', error);
+			prompts.set([]);
+		}
 	};
 
 	const getKnowledgeBasesHandler = async () => {
-		knowledge.set(await getKnowledgeBases(localStorage.token));
+		try {
+			knowledge.set(await getKnowledgeBases(localStorage.token));
+		} catch (error) {
+			console.error('Failed to load knowledge bases:', error);
+			knowledge.set([]);
+		}
 	};
 
 	const getToolsHandler = async () => {
-		tools.set(await getTools(localStorage.token));
+		try {
+			tools.set(await getTools(localStorage.token));
+		} catch (error) {
+			console.error('Failed to load tools:', error);
+			tools.set([]);
+		}
 	};
 
 	const getFunctionsHandler = async () => {
-		functions.set(await getFunctions(localStorage.token));
+		try {
+			functions.set(await getFunctions(localStorage.token));
+		} catch (error) {
+			console.error('Failed to load functions:', error);
+			functions.set([]);
+		}
 	};
 
 	const getTagsHandler = async () => {
-		tags.set(await getAllTags(localStorage.token));
+		try {
+			tags.set(await getAllTags(localStorage.token));
+		} catch (error) {
+			console.error('Failed to load tags:', error);
+			tags.set([]);
+		}
 	};
 
 	const getBannersHandler = async () => {
-		banners.set(await getBanners(localStorage.token));
+		try {
+			banners.set(await getBanners(localStorage.token));
+		} catch (error) {
+			console.error('Failed to load banners:', error);
+			banners.set([]);
+		}
 	};
 
 	const getUserSettingsHandler = async () => {
-		settings.set(await getUserSettings(localStorage.token));
+		try {
+			settings.set(await getUserSettings(localStorage.token));
+		} catch (error) {
+			console.error('Failed to load user settings:', error);
+			// Keep existing settings or use defaults
+		}
 	};
 
 	const getToolServersHandler = async () => {
-		toolServers.set(await getToolServersData(localStorage.token));
+		try {
+			toolServers.set(await getToolServersData(localStorage.token));
+		} catch (error) {
+			console.error('Failed to load tool servers:', error);
+			toolServers.set([]);
+		}
 	};
 
 	onMount(async () => {
@@ -97,17 +142,37 @@
 
 		loaded = true;
 
-		await Promise.all([
-			getModelsHandler(),
-			getPromptsHandler(),
-			getKnowledgeBasesHandler(),
-			getToolsHandler(),
-			getFunctionsHandler(),
-			getTagsHandler(),
-			getBannersHandler(),
-			getUserSettingsHandler(),
-			getToolServersHandler()
-		]);
+		// Check if we're in frontend-only mode
+		const isFrontendOnly = import.meta.env.PUBLIC_FRONTEND_ONLY === 'true' ||
+			window.location.pathname.includes('chatbot-builder') ||
+			window.location.pathname.includes('test-chatbot-api');
+
+		if (!isFrontendOnly) {
+			// Load all API data with individual error handling
+			// Each handler already has try-catch, so Promise.all won't fail
+			await Promise.allSettled([
+				getModelsHandler(),
+				getPromptsHandler(),
+				getKnowledgeBasesHandler(),
+				getToolsHandler(),
+				getFunctionsHandler(),
+				getTagsHandler(),
+				getBannersHandler(),
+				getUserSettingsHandler(),
+				getToolServersHandler()
+			]);
+		} else {
+			console.log('🎯 Frontend-only mode detected - skipping backend API calls');
+			// Set empty defaults for frontend-only mode
+			models.set([]);
+			prompts.set([]);
+			knowledge.set([]);
+			tools.set([]);
+			functions.set([]);
+			tags.set([]);
+			banners.set([]);
+			toolServers.set([]);
+		}
 
 		if ($config?.features?.enable_version_update_check ?? true) {
 			const versionUpdates = await getVersionUpdates(localStorage.token).catch((error) => {
