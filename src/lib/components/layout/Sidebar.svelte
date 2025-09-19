@@ -40,6 +40,7 @@
 		createChatViaAPI,
 		getRecentChats
 	} from '$lib/apis/chats';
+	import { getChatbots } from '$lib/api/chatbots.js';
 	import { createNewFolder, getFolders, updateFolderParentIdById } from '$lib/apis/folders';
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
@@ -80,6 +81,8 @@
 	let newFolderId = null;
 
 	let recentChats = [];
+	let chatbots = [];
+	let loadingChatbots = false;
 
 	const initFolders = async () => {
 		const folderList = await getFolders(localStorage.token).catch((error) => {
@@ -120,6 +123,61 @@
 			}
 		}
 	};
+
+	const loadChatbots = async (showToast = false) => {
+		try {
+			loadingChatbots = true;
+			const response = await getChatbots({ page_size: 10 }); // Load first 10 chatbots
+			console.log('Chatbots API response:', response);
+
+			// Handle different response structures
+			if (response.records && Array.isArray(response.records)) {
+				chatbots = response.records.map((chatbot, index) => ({
+					...chatbot,
+					// Generate a unique ID if not present
+					id: chatbot.id || chatbot.uid || `chatbot-${index}-${Date.now()}`
+				}));
+			} else if (response.results && Array.isArray(response.results)) {
+				chatbots = response.results.map((chatbot, index) => ({
+					...chatbot,
+					// Generate a unique ID if not present
+					id: chatbot.id || chatbot.uid || `chatbot-${index}-${Date.now()}`
+				}));
+			} else if (Array.isArray(response)) {
+				chatbots = response.map((chatbot, index) => ({
+					...chatbot,
+					// Generate a unique ID if not present
+					id: chatbot.id || chatbot.uid || `chatbot-${index}-${Date.now()}`
+				}));
+			} else {
+				chatbots = [];
+			}
+
+			console.log('Loaded chatbots with IDs:', chatbots);
+
+			if (showToast && chatbots.length > 0) {
+				toast.success(`Loaded ${chatbots.length} chatbot${chatbots.length === 1 ? '' : 's'}`);
+			}
+		} catch (error) {
+			console.error('Error loading chatbots:', error);
+			chatbots = [];
+			if (showToast) {
+				toast.error('Failed to load chatbots');
+			}
+		} finally {
+			loadingChatbots = false;
+		}
+	};
+
+	// Function to refresh chatbots (can be called from other components)
+	const refreshChatbots = async () => {
+		await loadChatbots(true);
+	};
+
+	// Make refreshChatbots available globally for other components to call
+	if (typeof window !== 'undefined') {
+		window.refreshSidebarChatbots = refreshChatbots;
+	}
 
 	const createFolder = async (name = 'Untitled') => {
 		if (name === '') {
@@ -407,6 +465,7 @@
 
 		await initChannels();
 		await initChatList();
+		await loadChatbots();
 
 		const recent = await getRecentChats();
 		if (recent && recent.success && Array.isArray(recent.response)) {
@@ -583,6 +642,41 @@
 			</svg>
 		</button>
 
+		<!-- Notes -->
+		{#if $user?.role === 'admin' || $user?.permissions?.workspace?.knowledge}
+			<a
+				class="p-2 rounded-lg hover:bg-white/10 transition"
+				href="/notes"
+				on:click={() => {
+					selectedChatId = null;
+					chatId.set('');
+
+					if ($mobile) {
+						showSidebar.set(false);
+					}
+				}}
+				draggable="false"
+			>
+				<svg
+					class="w-5 h-5"
+					aria-hidden="true"
+					xmlns="http://www.w3.org/2000/svg"
+					width="24"
+					height="24"
+					fill="none"
+					viewBox="0 0 24 24"
+				>
+					<path
+						stroke="currentColor"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M10 3v4a1 1 0 0 1-1 1H5m4 8h6m-6-4h6m4-8v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7.914a1 1 0 0 1 .293-.707l3.914-3.914A1 1 0 0 1 9.914 3H18a1 1 0 0 1 1 1Z"
+					/>
+				</svg>
+			</a>
+		{/if}
+
 		<!-- User Profile -->
 		<button class="p-2 rounded-lg hover:bg-white/10 transition">
 			<div class="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
@@ -682,23 +776,114 @@
 				</button>
 			</div>
 
-			<!-- Bots Section -->
+			<!-- Chatbots Section -->
 			<div class="px-3 py-2">
-				<div class="text-xs font-medium text-gray-500 mb-2 px-3">Bots</div>
-				<div class="space-y-1">
-					<div class="flex items-center space-x-3 px-3 py-2 hover:bg-gray-100 rounded-lg transition">
-						<div class="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center">
-							<span class="text-xs text-purple-600">🧬</span>
-						</div>
-						<span class="text-gray-700 text-sm">Biology Teacher</span>
-					</div>
-					<div class="flex items-center space-x-3 px-3 py-2 hover:bg-gray-100 rounded-lg transition bg-gray-100">
-						<div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-							<span class="text-xs text-blue-600">🧬</span>
-						</div>
-						<span class="text-gray-700 text-sm">Biology Teacher</span>
+				<div class="flex items-center justify-between mb-2 px-3">
+					<div class="text-xs font-medium text-gray-500">My Chatbots ({chatbots.length})</div>
+					<div class="flex items-center space-x-2">
+						<button
+							class="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+							on:click={() => refreshChatbots()}
+							title="Refresh chatbots"
+							disabled={loadingChatbots}
+						>
+							{#if loadingChatbots}
+								<div class="animate-spin rounded-full h-3 w-3 border-b border-gray-500"></div>
+							{:else}
+								↻
+							{/if}
+						</button>
+						<button
+							class="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+							on:click={() => {
+								goto('/chatbot-builder');
+								if ($mobile) {
+									showSidebar.set(false);
+								}
+							}}
+							title="Create new chatbot"
+						>
+							+ New
+						</button>
 					</div>
 				</div>
+
+				{#if loadingChatbots}
+					<div class="flex items-center justify-center py-4">
+						<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+						<span class="ml-2 text-xs text-gray-500">Loading...</span>
+					</div>
+				{:else if chatbots.length === 0}
+					<div class="text-center py-4 px-3">
+						<p class="text-xs text-gray-400 mb-2">No chatbots yet</p>
+						<button
+							class="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+							on:click={() => {
+								goto('/chatbot-builder');
+								if ($mobile) {
+									showSidebar.set(false);
+								}
+							}}
+						>
+							Create your first chatbot
+						</button>
+					</div>
+				{:else}
+					<div class="space-y-1 max-h-48 overflow-y-auto">
+						{#each chatbots as chatbot (chatbot.id)}
+							<button
+								class="w-full flex items-center space-x-3 px-3 py-2 hover:bg-gray-100 rounded-lg transition cursor-pointer text-left"
+								on:click={() => {
+									// Use the guaranteed unique ID
+									goto(`/c/${chatbot.id}`);
+									if ($mobile) {
+										showSidebar.set(false);
+									}
+								}}
+								title="Chat with {chatbot.name}"
+							>
+								{#if chatbot.picture}
+									<img src={chatbot.picture} alt="{chatbot.name} avatar" class="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+								{:else}
+									<div class="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+										<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.476L3 21l2.476-5.094A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
+										</svg>
+									</div>
+								{/if}
+								<div class="flex-1 min-w-0">
+									<p class="text-sm font-medium text-gray-700 truncate">{chatbot.name}</p>
+									{#if chatbot.bot_role}
+										<p class="text-xs text-gray-500 truncate">{chatbot.bot_role}</p>
+									{/if}
+								</div>
+								{#if chatbot.primary_language}
+									<div class="flex-shrink-0">
+										<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+											{chatbot.primary_language.name.slice(0, 2).toUpperCase()}
+										</span>
+									</div>
+								{/if}
+							</button>
+						{/each}
+					</div>
+
+					{#if chatbots.length >= 10}
+						<div class="mt-2 text-center px-3">
+							<button
+								class="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+								on:click={() => {
+									goto('/c/new');
+									if ($mobile) {
+										showSidebar.set(false);
+									}
+								}}
+							>
+								View all chatbots →
+							</button>
+						</div>
+					{/if}
+				{/if}
 			</div>
 
 			<!-- Recent Chats Section -->
@@ -748,441 +933,7 @@
 </div>
 
 
-			<div class="px-1.5 flex justify-center text-white">
-				<a
-					class="grow flex items-center space-x-3 rounded-lg px-2 py-[7px] hover:bg-white/10 transition"
-					href="/notes"
-					on:click={() => {
-						selectedChatId = null;
-						chatId.set('');
 
-						if ($mobile) {
-							showSidebar.set(false);
-						}
-					}}
-					draggable="false"
-				>
-					<div class="self-center">
-						<svg
-							class="size-4"
-							aria-hidden="true"
-							xmlns="http://www.w3.org/2000/svg"
-							width="24"
-							height="24"
-							fill="none"
-							viewBox="0 0 24 24"
-						>
-							<path
-								stroke="currentColor"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M10 3v4a1 1 0 0 1-1 1H5m4 8h6m-6-4h6m4-8v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7.914a1 1 0 0 1 .293-.707l3.914-3.914A1 1 0 0 1 9.914 3H18a1 1 0 0 1 1 1Z"
-							/>
-						</svg>
-					</div>
-
-					<div class="flex self-center translate-y-[0.5px]">
-						<div class=" self-center text-sm font-primary">{$i18n.t('Notes')}</div>
-					</div>
-				</a>
-			</div>
-		{/if}
-
-		{#if $user?.role === 'admin' || $user?.permissions?.workspace?.models || $user?.permissions?.workspace?.knowledge || $user?.permissions?.workspace?.prompts || $user?.permissions?.workspace?.tools}
-			<div class="px-1.5 flex justify-center text-white">
-				<a
-					class="grow flex items-center space-x-3 rounded-lg px-2 py-[7px] hover:bg-white/10 transition"
-					href="/workspace"
-					on:click={() => {
-						selectedChatId = null;
-						chatId.set('');
-
-						if ($mobile) {
-							showSidebar.set(false);
-						}
-					}}
-					draggable="false"
-				>
-					<div class="self-center">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke-width="2"
-							stroke="currentColor"
-							class="size-[1.1rem]"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								d="M13.5 16.875h3.375m0 0h3.375m-3.375 0V13.5m0 3.375v3.375M6 10.5h2.25a2.25 2.25 0 0 0 2.25-2.25V6a2.25 2.25 0 0 0-2.25-2.25H6A2.25 2.25 0 0 0 3.75 6v2.25A2.25 2.25 0 0 0 6 10.5Zm0 9.75h2.25A2.25 2.25 0 0 0 10.5 18v-2.25a2.25 2.25 0 0 0-2.25-2.25H6a2.25 2.25 0 0 0-2.25 2.25V18A2.25 2.25 0 0 0 6 20.25Zm9.75-9.75H18a2.25 2.25 0 0 0 2.25-2.25V6A2.25 2.25 0 0 0 18 3.75h-2.25A2.25 2.25 0 0 0 13.5 6v2.25a2.25 2.25 0 0 0 2.25 2.25Z"
-							/>
-						</svg>
-					</div>
-
-					<div class="flex self-center translate-y-[0.5px]">
-						<div class=" self-center text-sm font-primary">{$i18n.t('Workspace')}</div>
-					</div>
-				</a>
-			</div>
-		{/if}
-
-		<div class="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-			{#if ($models ?? []).length > 0 && ($settings?.pinnedModels ?? []).length > 0}
-				<div class="mt-0.5">
-					{#each $settings.pinnedModels as modelId (modelId)}
-						{@const model = $models.find((model) => model.id === modelId)}
-						{#if model}
-							<div class="px-1.5 flex justify-center text-white">
-								<a
-									class="grow flex items-center space-x-2.5 rounded-lg px-2 py-[7px] hover:bg-white/10 transition"
-									href="/?model={modelId}"
-									on:click={() => {
-										selectedChatId = null;
-										chatId.set('');
-
-										if ($mobile) {
-											showSidebar.set(false);
-										}
-									}}
-									draggable="false"
-								>
-									<div class="self-center shrink-0">
-										<img
-											crossorigin="anonymous"
-											src={model?.info?.meta?.profile_image_url ??
-												`${WEBUI_BASE_URL}/static/favicon.png`}
-											class=" size-5 rounded-full -translate-x-[0.5px]"
-											alt="logo"
-										/>
-									</div>
-
-									<div class="flex self-center translate-y-[0.5px]">
-										<div class=" self-center text-sm font-primary line-clamp-1">
-											{model?.name ?? modelId}
-										</div>
-									</div>
-								</a>
-							</div>
-						{/if}
-					{/each}
-				</div>
-			{/if}
-
-			{#if $config?.features?.enable_channels && ($user?.role === 'admin' || $channels.length > 0)}
-				<Folder
-					className="px-2 mt-0.5"
-					name={$i18n.t('Channels')}
-					dragAndDrop={false}
-					onAdd={async () => {
-						if ($user?.role === 'admin') {
-							await tick();
-
-							setTimeout(() => {
-								showCreateChannel = true;
-							}, 0);
-						}
-					}}
-					onAddLabel={$i18n.t('Create Channel')}
-				>
-					{#each $channels as channel}
-						<ChannelItem
-							{channel}
-							onUpdate={async () => {
-								await initChannels();
-							}}
-						/>
-					{/each}
-				</Folder>
-			{/if}
-
-			<Folder
-				className="px-2 mt-0.5"
-				name={$i18n.t('Chats')}
-				onAdd={() => {
-					createFolder();
-				}}
-				onAddLabel={$i18n.t('New Folder')}
-				on:change={(e) => {
-					selectedFolder.set(null);
-				}}
-				on:import={(e) => {
-					importChatHandler(e.detail);
-				}}
-				on:drop={async (e) => {
-					const { type, id, item } = e.detail;
-
-					if (type === 'chat') {
-						let chat = await getChatById(localStorage.token, id).catch((error) => {
-							return null;
-						});
-						if (!chat && item) {
-							chat = await importChat(
-								localStorage.token,
-								item.chat,
-								item?.meta ?? {},
-								false,
-								null,
-								item?.created_at ?? null,
-								item?.updated_at ?? null
-							);
-						}
-
-						if (chat) {
-							console.log(chat);
-							if (chat.folder_id) {
-								const res = await updateChatFolderIdById(localStorage.token, chat.id, null).catch(
-									(error) => {
-										toast.error(`${error}`);
-										return null;
-									}
-								);
-							}
-
-							if (chat.pinned) {
-								const res = await toggleChatPinnedStatusById(localStorage.token, chat.id);
-							}
-
-							initChatList();
-						}
-					} else if (type === 'folder') {
-						if (folders[id].parent_id === null) {
-							return;
-						}
-
-						const res = await updateFolderParentIdById(localStorage.token, id, null).catch(
-							(error) => {
-								toast.error(`${error}`);
-								return null;
-							}
-						);
-
-						if (res) {
-							await initFolders();
-						}
-					}
-				}}
-			>
-				{#if $pinnedChats.length > 0}
-					<div class="flex flex-col space-y-1 rounded-xl">
-						<Folder
-							className=""
-							bind:open={showPinnedChat}
-							on:change={(e) => {
-								localStorage.setItem('showPinnedChat', e.detail);
-								console.log(e.detail);
-							}}
-							on:import={(e) => {
-								importChatHandler(e.detail, true);
-							}}
-							on:drop={async (e) => {
-								const { type, id, item } = e.detail;
-
-								if (type === 'chat') {
-									let chat = await getChatById(localStorage.token, id).catch((error) => {
-										return null;
-									});
-									if (!chat && item) {
-										chat = await importChat(
-											localStorage.token,
-											item.chat,
-											item?.meta ?? {},
-											false,
-											null,
-											item?.created_at ?? null,
-											item?.updated_at ?? null
-										);
-									}
-
-									if (chat) {
-										console.log(chat);
-										if (chat.folder_id) {
-											const res = await updateChatFolderIdById(
-												localStorage.token,
-												chat.id,
-												null
-											).catch((error) => {
-												toast.error(`${error}`);
-												return null;
-											});
-										}
-
-										if (!chat.pinned) {
-											const res = await toggleChatPinnedStatusById(localStorage.token, chat.id);
-										}
-
-										initChatList();
-									}
-								}
-							}}
-							name={$i18n.t('Pinned')}
-						>
-							<div
-								class="ml-3 pl-1 mt-[1px] flex flex-col overflow-y-auto scrollbar-hidden border-s border-gray-100 dark:border-gray-900"
-							>
-								{#each $pinnedChats as chat, idx}
-									<ChatItem
-										className=""
-										id={chat.id}
-										title={chat.title}
-										{shiftKey}
-										selected={selectedChatId === chat.id}
-										on:select={() => {
-											selectedChatId = chat.id;
-										}}
-										on:unselect={() => {
-											selectedChatId = null;
-										}}
-										on:change={async () => {
-											initChatList();
-										}}
-										on:tag={(e) => {
-											const { type, name } = e.detail;
-											tagEventHandler(type, name, chat.id);
-										}}
-									/>
-								{/each}
-							</div>
-						</Folder>
-					</div>
-				{/if}
-
-				{#if folders}
-					<Folders
-						{folders}
-						{shiftKey}
-						onDelete={(folderId) => {
-							selectedFolder.set(null);
-							initChatList();
-						}}
-						on:update={() => {
-							initChatList();
-						}}
-						on:import={(e) => {
-							const { folderId, items } = e.detail;
-							importChatHandler(items, false, folderId);
-						}}
-						on:change={async () => {
-							initChatList();
-						}}
-					/>
-				{/if}
-
-				<div class=" flex-1 flex flex-col overflow-y-auto scrollbar-hidden">
-					<div class="pt-1.5">
-						{#if $chats}
-							{#each $chats as chat, idx}
-								{#if idx === 0 || (idx > 0 && chat.time_range !== $chats[idx - 1].time_range)}
-									<div
-										class="w-full pl-2.5 text-xs text-gray-500 dark:text-gray-500 font-medium {idx ===
-										0
-											? ''
-											: 'pt-5'} pb-1.5"
-									>
-										{$i18n.t(chat.time_range)}
-										<!-- localisation keys for time_range to be recognized from the i18next parser (so they don't get automatically removed):
-							{$i18n.t('Today')}
-							{$i18n.t('Yesterday')}
-							{$i18n.t('Previous 7 days')}
-							{$i18n.t('Previous 30 days')}
-							{$i18n.t('January')}
-							{$i18n.t('February')}
-							{$i18n.t('March')}
-							{$i18n.t('April')}
-							{$i18n.t('May')}
-							{$i18n.t('June')}
-							{$i18n.t('July')}
-							{$i18n.t('August')}
-							{$i18n.t('September')}
-							{$i18n.t('October')}
-							{$i18n.t('November')}
-							{$i18n.t('December')}
-							-->
-									</div>
-								{/if}
-
-								<ChatItem
-									className=""
-									id={chat.id}
-									title={chat.title}
-									{shiftKey}
-									selected={selectedChatId === chat.id}
-									on:select={() => {
-										selectedChatId = chat.id;
-									}}
-									on:unselect={() => {
-										selectedChatId = null;
-									}}
-									on:change={async () => {
-										initChatList();
-									}}
-									on:tag={(e) => {
-										const { type, name } = e.detail;
-										tagEventHandler(type, name, chat.id);
-									}}
-								/>
-							{/each}
-
-							{#if $scrollPaginationEnabled && !allChatsLoaded}
-								<Loader
-									on:visible={(e) => {
-										if (!chatListLoading) {
-											loadMoreChats();
-										}
-									}}
-								>
-									<div
-										class="w-full flex justify-center py-1 text-xs animate-pulse items-center gap-2"
-									>
-										<Spinner className=" size-4" />
-										<div class=" ">Loading...</div>
-									</div>
-								</Loader>
-							{/if}
-						{:else}
-							<div class="w-full flex justify-center py-1 text-xs animate-pulse items-center gap-2">
-								<Spinner className=" size-4" />
-								<div class=" ">Loading...</div>
-							</div>
-						{/if}
-					</div>
-				</div>
-			</Folder>
-		</div>
-
-		<div class="px-2">
-			<div class="flex flex-col font-primary">
-				{#if $user !== undefined && $user !== null}
-					<UserMenu
-						role={$user?.role}
-						on:show={(e) => {
-							if (e.detail === 'archived-chat') {
-								showArchivedChats.set(true);
-							}
-						}}
-					>
-						<button
-							class=" flex items-center rounded-xl py-2.5 px-2.5 w-full hover:bg-white/10 transition"
-							on:click={() => {
-								showDropdown = !showDropdown;
-							}}
-						>
-							<div class=" self-center mr-3">
-								<img
-									src={$user?.profile_image_url}
-									class=" max-w-[30px] object-cover rounded-full"
-									alt="User profile"
-								/>
-							</div>
-							<div class=" self-center font-medium">{$user?.name}</div>
-						</button>
-					</UserMenu>
-				{/if}
-			</div>
-		</div>
-	</div>
-</div>
 
 <style>
 	.scrollbar-hidden:active::-webkit-scrollbar-thumb,

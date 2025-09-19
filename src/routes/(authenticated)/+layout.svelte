@@ -41,7 +41,7 @@
 		chats
 	} from '$lib/stores';
 
-	import Sidebar from '$lib/components/layout/SidebarNew.svelte';
+	import Sidebar from '$lib/components/layout/Sidebar.svelte';
 	import TopBar from '$lib/components/layout/TopBar.svelte';
 	import SettingsModal from '$lib/components/chat/SettingsModal.svelte';
 	// import ChangelogModal from '$lib/components/ChangelogModal.svelte';

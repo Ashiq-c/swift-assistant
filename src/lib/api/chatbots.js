@@ -115,6 +115,20 @@ export async function createChatbot(chatbotData, options = { showAlerts: true })
         throw new Error(result.message || `HTTP error! status: ${response.status}`);
       }
 
+      // Show success notification
+      if (options.showAlerts) {
+        showNotification('Chatbot created successfully!', 'success');
+      }
+
+      // Refresh the sidebar chatbots list
+      if (typeof window !== 'undefined' && window.refreshSidebarChatbots) {
+        try {
+          await window.refreshSidebarChatbots();
+        } catch (error) {
+          console.warn('Failed to refresh sidebar chatbots:', error);
+        }
+      }
+
       return result;
     } else {
       // No files - send as JSON
@@ -157,6 +171,20 @@ export async function createChatbot(chatbotData, options = { showAlerts: true })
 
       if (!response.ok) {
         throw new Error(result.message || `HTTP error! status: ${response.status}`);
+      }
+
+      // Show success notification
+      if (options.showAlerts) {
+        showNotification('Chatbot created successfully!', 'success');
+      }
+
+      // Refresh the sidebar chatbots list
+      if (typeof window !== 'undefined' && window.refreshSidebarChatbots) {
+        try {
+          await window.refreshSidebarChatbots();
+        } catch (error) {
+          console.warn('Failed to refresh sidebar chatbots:', error);
+        }
       }
 
       return result;
@@ -308,4 +336,117 @@ export function transformConfigToApiFormat(config) {
       return files;
     })()
   };
+}
+
+/**
+ * Get list of chatbots with pagination
+ * @param {Object} params - Query parameters
+ * @param {number} params.page - Page number (default: 1)
+ * @param {number} params.page_size - Number of items per page (default: 10)
+ * @param {number} params.user_id - Filter by user ID (optional)
+ * @returns {Promise<Object>} Paginated chatbot list response
+ */
+export async function getChatbots(params = {}) {
+  try {
+    const apiBaseUrl = getApiBaseUrl();
+    const queryParams = new URLSearchParams();
+
+    // Add pagination parameters
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.page_size) queryParams.append('page_size', params.page_size.toString());
+    if (params.user_id) queryParams.append('user_id', params.user_id.toString());
+
+    const url = `${apiBaseUrl}/v1/chatbots/?${queryParams.toString()}`;
+
+    console.log('Fetching chatbots from:', url);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Chatbots fetched successfully:', data);
+
+    return data;
+  } catch (error) {
+    console.error('Error fetching chatbots:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get a specific chatbot by ID
+ * @param {string|number} id - Chatbot ID
+ * @returns {Promise<Object>} Chatbot data
+ */
+export async function getChatbot(id) {
+  try {
+    const apiBaseUrl = getApiBaseUrl();
+    const url = `${apiBaseUrl}/v1/chatbots/${id}/`;
+
+    console.log('Fetching chatbot from:', url);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Chatbot fetched successfully:', data);
+
+    return data;
+  } catch (error) {
+    console.error('Error fetching chatbot:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a chatbot by ID
+ * @param {string|number} id - Chatbot ID
+ * @returns {Promise<Object>} Delete response
+ */
+export async function deleteChatbot(id) {
+  try {
+    const apiBaseUrl = getApiBaseUrl();
+    const url = `${apiBaseUrl}/v1/chatbots/${id}/`;
+
+    console.log('Deleting chatbot at:', url);
+
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    // DELETE requests might return empty response
+    const data = response.status === 204 ? { success: true } : await response.json();
+    console.log('Chatbot deleted successfully:', data);
+
+    return data;
+  } catch (error) {
+    console.error('Error deleting chatbot:', error);
+    throw error;
+  }
 }
