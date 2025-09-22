@@ -190,7 +190,7 @@
   <Sidebar />
 
   <!-- Main Content - Account for 72px sidebar and 48px topbar -->
-  <div class="flex-1 flex flex-col ml-[72px]">
+  <div class="flex-1 min-h-0 flex flex-col ml-[72px]">
     <!-- Header -->
     <div class="px-6 py-4" style="background: #FFFFFF;">
       <div class="flex items-center mb-6">
@@ -210,9 +210,9 @@
     </div>
     
     <!-- Content Area -->
-    <div class="flex-1 flex">
+    <div class="flex-1 flex gap-4 min-w-0 min-h-0 overflow-hidden">
       <!-- Left Panel -->
-      <div class="w-2/3 flex flex-col h-full overflow-y-auto">
+      <div class="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
         <!-- Build Method Tabs -->
         <div class="px-6 pb-4">
           <div class="flex rounded-lg overflow-hidden" style="background: linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)), linear-gradient(0deg, #E4DCFF, #E4DCFF);">
@@ -240,7 +240,7 @@
         </div>
         
         <!-- Section Content -->
-        <div class="flex-1">
+        <div class="flex-1 min-h-0 overflow-hidden">
           {#if currentBuildMethod === 'ai'}
             <!-- AI-Assisted Build Interface -->
             <div class="flex items-center justify-center h-full p-8">
@@ -261,7 +261,7 @@
             </div>
           {:else}
             <!-- Manual Build Interface -->
-            <div class="flex h-full">
+            <div class="flex h-full min-w-0">
               <!-- Configuration Sidebar -->
               <div class="w-64 border border-gray-200 rounded-lg m-4 sticky top-4 h-fit" style="background: #FFFFFF;">
                 <!-- Sidebar Header -->
@@ -286,7 +286,7 @@
               </div>
 
               <!-- Section Content -->
-              <div class="flex-1 p-6 overflow-y-auto" style="background: #FFFFFF; height: calc(100vh - 160px);">
+              <div class="flex-1 min-h-0 p-6 overflow-y-auto pb-24" style="background: #FFFFFF;">
                 <div class="max-w-2xl pb-8">
                   <h3 class="text-xl font-semibold mb-6" style="color: #6878B6;">
                     {sections.find(s => s.id === currentSection)?.label}
@@ -302,7 +302,7 @@
       </div>
       
       <!-- Right Panel - Live Preview -->
-      <div class="w-1/3 h-full p-6 overflow-y-auto">
+      <div class="shrink-0 min-w-[340px] w-[360px] lg:w-[420px] xl:w-[520px] h-full p-6 overflow-y-auto">
         <!-- Preview Header with Toggle -->
         <div class="flex items-center justify-between mb-4">
           <h3 style="font-weight: 600; font-size: 18px; line-height: 100%; letter-spacing: 0%; color: #6878B6;">Live Bot Preview</h3>
@@ -425,7 +425,7 @@
         </div>
         {/if}
 
-        <LiveBotPreview botName={config.name || 'Your Chatbot'} activeTab={activePreviewTab} />
+        <LiveBotPreview botName={config.name || 'Your Chatbot'} activeTab={activePreviewTab} persona={selectedPersona} />
       </div>
     </div>
   </div>

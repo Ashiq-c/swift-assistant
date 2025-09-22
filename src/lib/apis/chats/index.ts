@@ -1002,11 +1002,14 @@ export const archiveAllChats = async (token: string) => {
     return res;
 };
 
-export const createChatViaAPI = async (token: string) => {
+export const createChatViaAPI = async (token: string, chatbotId?: string) => {
     let error = null;
 
     try {
         const formdata = new FormData();
+        if (chatbotId) {
+            formdata.append('chatbot', chatbotId);
+        }
 
         // Get token from localStorage if not provided
         const authToken = token || localStorage.getItem('token');
@@ -1025,7 +1028,8 @@ export const createChatViaAPI = async (token: string) => {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const text = await response.text();
+            throw new Error(`HTTP error! status: ${response.status} body: ${text}`);
         }
 
         const result = await response.json();
