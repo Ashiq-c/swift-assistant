@@ -22,6 +22,7 @@
 		"test:frontend": "vitest --passWithNoTests"
 	},
 	"devDependencies": {
+		"@rollup/rollup-linux-x64-gnu": "^4.52.2",
 		"@sveltejs/adapter-auto": "3.2.2",
 		"@sveltejs/adapter-node": "^5.2.13",
 		"@sveltejs/adapter-static": "^3.0.2",
