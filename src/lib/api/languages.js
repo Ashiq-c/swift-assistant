@@ -1,4 +1,5 @@
 import { browser } from '$app/environment';
+import { CUSTOM_API_BASE_URL } from '$lib/constants';
 
 // Get API base URL from environment or use default
 const getApiBaseUrl = () => {
@@ -6,8 +7,8 @@ const getApiBaseUrl = () => {
     // In browser, use the proxy configured in vite.config.ts
     return '/custom-api';
   }
-  // Server-side fallback
-  return 'http://127.0.0.1:8000/';
+  // Server-side fallback - use environment variable
+  return CUSTOM_API_BASE_URL;
 };
 
 /**

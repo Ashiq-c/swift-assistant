@@ -1,4 +1,4 @@
-import staticAdapter from '@sveltejs/adapter-static';
+import vercelAdapter from '@sveltejs/adapter-static';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte'; // ✅ correct import
 import * as child_process from 'node:child_process';
 import fs from 'node:fs';
@@ -8,7 +8,7 @@ const config = {
 	preprocess: vitePreprocess(),
 
 	kit: {
-		adapter: staticAdapter({
+		adapter: vercelAdapter({
 			pages: 'build',
 			assets: 'build',
 			fallback: 'index.html',

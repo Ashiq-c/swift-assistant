@@ -3,13 +3,15 @@
 	"outputDirectory": "build",
 	"build": {
 		"env": {
-			"NODE_OPTIONS": "--max-old-space-size=16384"
+			"NODE_OPTIONS": "--max-old-space-size=8192",
+			"NODE_ENV": "production",
+			"PUBLIC_API_BASE_URL": "https://swift-ai-assist.e8demo.com",
+			"PUBLIC_CUSTOM_API_BASE_URL": "https://swift-ai-assist.e8demo.com",
+			"PUBLIC_FRONTEND_ONLY": "true",
+			"OLLAMA_BASE_URL": "https://swift-ai-assist.e8demo.com/ollama",
+			"SCARF_NO_ANALYTICS": "true",
+			"DO_NOT_TRACK": "true",
+			"ANONYMIZED_TELEMETRY": "false"
 		}
-	},
-	"rewrites": [
-		{
-			"source": "/(.*)",
-			"destination": "/index.html"
-		}
-	]
+	}
 }

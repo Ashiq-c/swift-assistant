@@ -1,7 +1,6 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
-import { visualizer } from 'rollup-plugin-visualizer';
 
 export default defineConfig({
 	plugins: [
@@ -14,8 +13,7 @@ export default defineConfig({
 					dest: 'wasm'
 				}
 			]
-		}),
-		visualizer({ open: false }) // set to true if you want to auto-open analyzer in browser
+		})
 	],
 	define: {
 		APP_VERSION: JSON.stringify(process.env.npm_package_version),
@@ -24,7 +22,19 @@ export default defineConfig({
 	build: {
 		sourcemap: false,
 		minify: true,
-		cssMinify: true
+		cssMinify: true,
+		rollupOptions: {
+			output: {
+				manualChunks: (id) => {
+					if (id.includes('node_modules')) {
+						if (id.includes('svelte')) return 'vendor';
+						if (id.includes('chart.js') || id.includes('mermaid')) return 'charts';
+						if (id.includes('codemirror')) return 'codemirror';
+						return 'vendor';
+					}
+				}
+			}
+		}
 	},
 	worker: {
 		format: 'es'
@@ -35,17 +45,17 @@ export default defineConfig({
 	server: {
 		proxy: {
 			'/api': {
-				target: 'http://localhost:8080',
+				target: process.env.PUBLIC_API_BASE_URL || 'http://localhost:8080',
 				changeOrigin: true,
 				secure: false
 			},
 			'/ollama': {
-				target: 'http://localhost:8080',
+				target: process.env.OLLAMA_BASE_URL || 'http://localhost:8080',
 				changeOrigin: true,
 				secure: false
 			},
 			'/custom-api': {
-				target: 'http://127.0.0.1:8000/',
+				target: process.env.PUBLIC_CUSTOM_API_BASE_URL || 'http://127.0.0.1:8000',
 				changeOrigin: true,
 				secure: false,
 				rewrite: (path) => path.replace(/^\/custom-api/, '/api')
