@@ -17,6 +17,7 @@
 		getPinnedChatList,
 		updateChatById
 	} from '$lib/apis/chats';
+	import { extractUserMessage } from '$lib/utils';
 	import {
 		chatId,
 		chatTitle as _chatTitle,
@@ -237,7 +238,7 @@
 		const messages = (chat.chat?.messages ?? []).map((message) => {
 			return {
 				role: message.role,
-				content: message.content
+				content: message.role === 'user' ? extractUserMessage(message.content) : message.content
 			};
 		});
 
@@ -385,7 +386,7 @@
 		>
 			<div class=" flex self-center flex-1 w-full">
 				<div dir="auto" class="text-left self-center overflow-hidden w-full h-[20px]">
-					{title}
+					{extractUserMessage(title)}
 				</div>
 			</div>
 		</a>

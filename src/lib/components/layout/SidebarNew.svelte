@@ -17,6 +17,7 @@
 	const i18n = getContext('i18n');
 
 	import { getChatList, createChatViaAPI, getRecentChats } from '$lib/apis/chats';
+	import { extractUserMessage } from '$lib/utils';
 	import UserMenu from './Sidebar/UserMenu.svelte';
 	import PencilSquare from '../icons/PencilSquare.svelte';
 	import Search from '../icons/Search.svelte';
@@ -351,7 +352,7 @@
 					{:else}
 						{#each recentChats as chat}
 							<div class="px-3 py-2 hover:bg-gray-100 rounded-lg transition cursor-pointer" on:click={() => goto(`/c/${chat.id}`)}>
-								<p class="text-gray-700 text-sm truncate">{chat.title}</p>
+								<p class="text-gray-700 text-sm truncate">{extractUserMessage(chat.title)}</p>
 							</div>
 						{/each}
 					{/if}

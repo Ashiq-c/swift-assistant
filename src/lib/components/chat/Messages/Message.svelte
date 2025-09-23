@@ -40,6 +40,7 @@
 	export let addMessages;
 	export let triggerScroll;
 	export let readOnly = false;
+	export let currentBot = null;
 </script>
 
 <div
@@ -88,6 +89,7 @@
 				{regenerateResponse}
 				{addMessages}
 				{readOnly}
+				{currentBot}
 			/>
 		{:else}
 			<MultiResponseMessages

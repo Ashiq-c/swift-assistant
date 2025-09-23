@@ -47,6 +47,7 @@
 	export let addMessages: Function = () => {};
 
 	export let readOnly = false;
+	export let currentBot = null;
 
 	export let bottomPadding = false;
 	export let autoScroll;
@@ -445,6 +446,7 @@
 							{addMessages}
 							{triggerScroll}
 							{readOnly}
+							{currentBot}
 						/>
 					{/each}
 				</div>

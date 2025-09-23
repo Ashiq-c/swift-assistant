@@ -133,6 +133,7 @@
 
 	export let isLastMessage = true;
 	export let readOnly = false;
+	export let currentBot = null;
 
 	let buttonsContainerElement: HTMLDivElement;
 	let showDeleteConfirm = false;
@@ -601,7 +602,7 @@
 	>
 		<div class={`shrink-0 ltr:mr-3 rtl:ml-3 hidden @lg:flex mt-1 `}>
 			<ProfileImage
-				src={$user?.profile_image_url || '/assets/images/favicon.png'}
+				src={(currentBot && currentBot.picture) ? currentBot.picture : '/assets/images/favicon.png'}
 				className={'size-8 assistant-message-profile-image'}
 			/>
 		</div>
