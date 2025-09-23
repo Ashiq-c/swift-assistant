@@ -42,6 +42,12 @@
 	export let files = [];
 	export let messageInput = null;
 
+	// Optional bot context (when navigating from a saved chatbot)
+	export let botName: string = '';
+	export let botRole: string = '';
+	export let botGreeting: string = '';
+	export let botSuggestionPrompts: Array<{ content: string; title?: string[] }> = [];
+
 	export let selectedToolIds = [];
 	export let selectedFilterIds = [];
 
@@ -146,7 +152,9 @@
 						class=" text-3xl @sm:text-3xl line-clamp-1 flex items-center"
 						in:fade={{ duration: 100 }}
 					>
-						{#if models[selectedModelIdx]?.name}
+						{#if botName}
+							<span class="line-clamp-1">{botName}</span>
+						{:else if models[selectedModelIdx]?.name}
 							<Tooltip
 								content={models[selectedModelIdx]?.name}
 								placement="top"
@@ -164,6 +172,12 @@
 
 				<div class="flex mt-1 mb-2">
 					<div in:fade={{ duration: 100, delay: 50 }}>
+						{#if botRole || botGreeting}
+							<div class="mt-0.5 px-2 text-sm font-normal text-gray-500 dark:text-gray-400 line-clamp-2 max-w-xl">
+								{botRole || botGreeting}
+							</div>
+						{/if}
+
 						{#if models[selectedModelIdx]?.info?.meta?.description ?? null}
 							<Tooltip
 								className=" w-fit"
@@ -247,9 +261,9 @@
 	<div class="mx-auto max-w-2xl font-primary mt-2" in:fade={{ duration: 200, delay: 200 }}>
 		<div class="mx-5">
 			<Suggestions
-				suggestionPrompts={models[selectedModelIdx]?.info?.meta?.suggestion_prompts ??
-					$config?.default_prompt_suggestions ??
-					[]}
+				suggestionPrompts={botSuggestionPrompts?.length
+					? botSuggestionPrompts
+					: (models[selectedModelIdx]?.info?.meta?.suggestion_prompts ?? $config?.default_prompt_suggestions ?? [])}
 				inputValue={prompt}
 				{onSelect}
 			/>

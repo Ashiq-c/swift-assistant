@@ -1002,13 +1002,19 @@ export const archiveAllChats = async (token: string) => {
     return res;
 };
 
-export const createChatViaAPI = async (token: string, chatbotId?: string) => {
+export const createChatViaAPI = async (token: string, chatbotIdentifier?: string) => {
     let error = null;
 
     try {
         const formdata = new FormData();
-        if (chatbotId) {
-            formdata.append('chatbot', chatbotId);
+        if (chatbotIdentifier) {
+            const isNumericPk = typeof chatbotIdentifier === 'string' && /^\d+$/.test(chatbotIdentifier);
+            // Backend expects numeric pk in 'chatbot'. If we only have a UID, try 'chatbot_uid'.
+            if (isNumericPk) {
+                formdata.append('chatbot', chatbotIdentifier);
+            } else {
+                formdata.append('chatbot_uid', chatbotIdentifier);
+            }
         }
 
         // Get token from localStorage if not provided

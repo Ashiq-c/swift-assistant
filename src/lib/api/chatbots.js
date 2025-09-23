@@ -112,7 +112,12 @@ export async function createChatbot(chatbotData, options = { showAlerts: true })
       console.log('Response:', result);
 
       if (!response.ok) {
-        throw new Error(result.message || `HTTP error! status: ${response.status}`);
+        const errPayload = {
+          message: result?.message || 'HTTP error',
+          status: response.status,
+          errors: result?.errors || result
+        };
+        throw new Error(JSON.stringify(errPayload));
       }
 
       // Show success notification
@@ -170,7 +175,12 @@ export async function createChatbot(chatbotData, options = { showAlerts: true })
       console.log('Response:', result);
 
       if (!response.ok) {
-        throw new Error(result.message || `HTTP error! status: ${response.status}`);
+        const errPayload = {
+          message: result?.message || 'HTTP error',
+          status: response.status,
+          errors: result?.errors || result
+        };
+        throw new Error(JSON.stringify(errPayload));
       }
 
       // Show success notification
@@ -390,7 +400,7 @@ export async function getChatbots(params = {}) {
 export async function getChatbot(id) {
   try {
     const apiBaseUrl = getApiBaseUrl();
-    const url = `${apiBaseUrl}/v1/chatbots/${id}/`;
+    const url = `${apiBaseUrl}/v1/chatbots/${encodeURIComponent(id)}/`;
 
     console.log('Fetching chatbot from:', url);
 
@@ -401,14 +411,43 @@ export async function getChatbot(id) {
       },
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    let data = null;
+    try {
+      data = await response.json();
+    } catch (_) {
+      data = null;
     }
 
-    const data = await response.json();
-    console.log('Chatbot fetched successfully:', data);
+    // If HTTP failed or backend indicates failure, try a fallback: search in list by id/uid
+    const failed = !response.ok || (data && (data.result === 'failure' || data.success === false));
+    if (failed) {
+      console.warn('Primary chatbot fetch failed; attempting fallback list search', { status: response.status, data });
+      try {
+        const list = await getChatbots({ page_size: 50 }).catch(() => null);
+        const items = Array.isArray(list?.results)
+          ? list.results
+          : Array.isArray(list?.records)
+          ? list.records
+          : Array.isArray(list?.data?.results)
+          ? list.data.results
+          : Array.isArray(list?.data?.records)
+          ? list.data.records
+          : Array.isArray(list)
+          ? list
+          : [];
+        const found = items.find((it) => String(it?.id) === String(id) || String(it?.uid) === String(id));
+        if (found) {
+          console.log('Fallback found chatbot in list:', found);
+          return found;
+        }
+      } catch (e) {
+        console.warn('Fallback list search failed', e);
+      }
+      const msg = data?.message || 'Failed to fetch chatbot';
+      throw new Error(msg);
+    }
 
+    console.log('Chatbot fetched successfully:', data);
     return data;
   } catch (error) {
     console.error('Error fetching chatbot:', error);

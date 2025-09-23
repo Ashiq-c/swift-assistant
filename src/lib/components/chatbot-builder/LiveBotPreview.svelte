@@ -4,6 +4,7 @@
   import { PERSONAS } from '$lib/chatbot-builder-types.js';
   import { createChatViaAPI } from '$lib/apis/chats';
   import { streamChatMessage as sseStream } from '$lib/api/streamChatMessage';
+  import { getChatbot } from '$lib/api/chatbots.js';
   import { onMount, tick, onDestroy, setContext } from 'svelte';
   import Suggestions from '$lib/components/chat/Suggestions.svelte';
   import Plus from '$lib/components/icons/Plus.svelte';
@@ -20,6 +21,7 @@
   let messages = [];
   let chatId = null;
   let streamRef = null;
+  let savedBot = null; // loaded from backend when a saved bot id exists
   // MessageInput bindings/state for 1:1 chat controls
   let files = [];
   let autoScroll = false;
@@ -87,6 +89,18 @@
 
   // Use current chatbot id from builder config, if saved
   $: currentChatbotId = $chatbotConfig?.id || '';
+  $: if (currentChatbotId) {
+    (async () => {
+      try {
+        savedBot = await getChatbot(currentChatbotId);
+      } catch (e) {
+        console.warn('Failed to load saved bot for preview', e);
+        savedBot = null;
+      }
+    })();
+  } else {
+    savedBot = null;
+  }
 
   async function ensureChat() {
     if (chatId) return chatId;
@@ -234,6 +248,34 @@
     return icons[key] || icons.webSearch;
   }
 
+  function mapSavedToPreviewCfg(bot) {
+    try {
+      return {
+        name: bot?.name || '',
+        botRole: bot?.bot_role || '',
+        instructions: bot?.instructions || '',
+        greetingMessage: bot?.greeting_message || '',
+        gradeLevel: bot?.grade_level || '',
+        primaryLanguage: bot?.primary_language?.id?.toString?.() || bot?.primary_language_id?.toString?.() || '',
+        secondaryLanguages: Array.isArray(bot?.secondary_languages) ? bot.secondary_languages.map(l => typeof l === 'object' ? String(l.id) : String(l)) : (Array.isArray(bot?.secondary_language_ids) ? bot.secondary_language_ids.map(String) : []),
+        capabilities: {
+          webSearch: !!bot?.real_time_web_search,
+          fileUpload: !!bot?.file_upload_analysis,
+          imageUpload: !!bot?.image_upload_gpt_vision,
+          imageCreation: !!bot?.create_images,
+          drawingTools: !!bot?.drawing_tools,
+          canvasEdit: !!bot?.canvas_edit_modify,
+        },
+        conversationStarters: Array.isArray(bot?.conversation_starters) ? bot.conversation_starters.map(s => s?.text || String(s)) : [],
+        gradingRubric: bot?.grading_rubric || ''
+      };
+    } catch {
+      return undefined;
+    }
+  }
+
+  $: displayCfg = savedBot ? mapSavedToPreviewCfg(savedBot) : $chatbotConfig;
+
   function getEnabledCaps(cfg) {
     const caps = (cfg && cfg.capabilities) ? cfg.capabilities : {};
     const keys = Object.keys(caps).filter((k) => !!caps[k]);
@@ -314,7 +356,8 @@
       // Add placeholder bot message to stream into
       const botMsg = { id: (Date.now() + 1).toString(), content: '', sender: 'bot' };
       messages = [...messages, botMsg];
-      startStreaming(finalPrompt, personaKey, previewConfigWithUIOverrides($chatbotConfig));
+      const usePreviewCfg = currentChatbotId ? undefined : previewConfigWithUIOverrides($chatbotConfig);
+      startStreaming(finalPrompt, personaKey, usePreviewCfg);
     } catch (e) {
       console.error(e);
     }
@@ -391,7 +434,7 @@
   }
 </script>
 
-<div class="shadow-sm {className}" style="width: 100%; max-width: 560px; height: 564px; opacity: 1; border-radius: 20px; border: 1px solid #EBEBEB; background: #FFFFFF;">
+<div class="shadow-sm {className}" style="width: 100%; max-width: 560px; height: auto; max-height: 70vh; opacity: 1; border-radius: 20px; border: 1px solid #EBEBEB; background: #FFFFFF;">
   <!-- Chatbot Header -->
   <div class="border-b border-gray-200 px-4 py-3" style="width: 100%; height: 58px; opacity: 1; border-top-left-radius: 19px; border-top-right-radius: 19px; background: linear-gradient(261.37deg, rgba(135, 206, 250, 0.1) 25.1%, rgba(104, 120, 182, 0.1) 76.25%); box-sizing: border-box;">
     <div class="flex items-center space-x-3">
@@ -404,8 +447,8 @@
 
       <!-- Chatbot Info -->
       <div class="flex-1">
-        <h3 class="text-sm font-medium text-gray-900">{botName}</h3>
-        <p class="text-xs text-gray-500">No Subject Selected</p>
+        <h3 class="text-sm font-medium text-gray-900">{savedBot?.name || botName}</h3>
+        <p class="text-xs text-gray-500">{savedBot?.bot_role || 'No Subject Selected'}</p>
       </div>
 
       <!-- Action Buttons -->
@@ -420,7 +463,7 @@
   </div>
 
   <!-- Preview Content -->
-  <div style="width: 100%; height: 504px; opacity: 1; border-radius: 20px; background: #F9F9F9; padding: 16px; display: flex; flex-direction: column; box-sizing: border-box;">
+  <div style="width: 100%; height: auto; max-height: calc(70vh - 58px); opacity: 1; border-radius: 20px; background: #F9F9F9; padding: 16px; display: flex; flex-direction: column; box-sizing: border-box;">
     <!-- Messages Area -->
     <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
       {#if streamError}
@@ -435,7 +478,7 @@
           <div class="mx-auto w-full max-w-2xl font-primary mt-3">
             <div class="mx-2">
               <Suggestions
-                suggestionPrompts={startersToSuggestions($chatbotConfig?.conversationStarters)}
+                suggestionPrompts={startersToSuggestions((displayCfg?.conversationStarters) || [])}
                 inputValue={message}
                 onSelect={({ data }) => {
                   message = data;
@@ -467,9 +510,9 @@
       {/if}
     </div>
 
-    {#if getEnabledCaps($chatbotConfig).length}
+    {#if getEnabledCaps(displayCfg).length}
       <div style="display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 6px 0;">
-        {#each getEnabledCaps($chatbotConfig) as cap}
+        {#each getEnabledCaps(displayCfg) as cap}
           <span title="Enabled capability"
             style="padding:6px 10px; border:1px solid #E5E7EB; border-radius:999px; background:#F9FAFB; color:#374151; font-size:12px; display:inline-flex; align-items:center; gap:6px;">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

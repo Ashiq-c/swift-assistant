@@ -13,7 +13,9 @@
   import BotCapabilitiesSection from './BotCapabilitiesSection.svelte';
   import SessionControlSection from './SessionControlSection.svelte';
   import LiveBotPreview from './LiveBotPreview.svelte';
-  
+  import AiAssistedBuilder from './AiAssistedBuilder.svelte';
+
+
   let config = {};
   let currentSection = 'overview';
   let currentBuildMethod = 'manual';
@@ -47,7 +49,7 @@
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   });
-  
+
   const sections = [
     { id: 'overview', label: 'Overview' },
     { id: 'behavior', label: 'Behaviour & Knowledge' },
@@ -56,15 +58,15 @@
     { id: 'capabilities', label: 'Bot Capabilities' },
     { id: 'session', label: 'Session Control' }
   ];
-  
+
   function setActiveSection(sectionId) {
     activeSection.set(sectionId);
   }
-  
+
   function setBuildMethod(method) {
     buildMethod.set(method);
   }
-  
+
   async function handleSave() {
     const result = await saveConfig();
     if (result.success) {
@@ -96,7 +98,7 @@
     const currentIndex = sections.findIndex(section => section.id === currentSection);
     return currentIndex === sections.length - 1 ? 'Save' : 'Continue';
   }
-  
+
   function renderCurrentSection() {
     switch (currentSection) {
       case 'overview':
@@ -185,7 +187,7 @@
   </div>
 </div>
 
-<div class="flex h-screen relative pt-12" style="background: #FFFFFF;">
+<div class="flex min-h-screen relative pt-12 overflow-y-auto" style="background: #FFFFFF;">
   <!-- Custom Chatbot Builder Sidebar -->
   <Sidebar />
 
@@ -208,9 +210,9 @@
       <!-- Build Method Title -->
       <h2 class="text-lg font-medium mb-4" style="color: #6878B6;">Build Method</h2>
     </div>
-    
+
     <!-- Content Area -->
-    <div class="flex-1 flex gap-4 min-w-0 min-h-0 overflow-hidden">
+    <div class="flex-1 flex flex-col md:flex-row gap-4 min-w-0 min-h-0 overflow-hidden">
       <!-- Left Panel -->
       <div class="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
         <!-- Build Method Tabs -->
@@ -238,27 +240,11 @@
             </button>
           </div>
         </div>
-        
+
         <!-- Section Content -->
         <div class="flex-1 min-h-0 overflow-hidden">
           {#if currentBuildMethod === 'ai'}
-            <!-- AI-Assisted Build Interface -->
-            <div class="flex items-center justify-center h-full p-8">
-              <div class="text-center max-w-lg w-full p-16 rounded-2xl" style="background: #F5F5F5;">
-                <div class="w-24 h-24 mx-auto mb-8 rounded-2xl flex items-center justify-center" style="background: linear-gradient(0deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)), linear-gradient(0deg, #E4DCFF, #E4DCFF);">
-                  <div class="w-16 h-16 bg-white rounded-xl shadow-lg flex items-center justify-center">
-                    <span class="text-3xl">📚</span>
-                  </div>
-                </div>
-                <h3 class="text-2xl font-bold text-gray-900 mb-4">AI-Assisted Build</h3>
-                <p class="text-gray-600 mb-8 leading-relaxed">
-                  Answer a few questions and let AI create your chatbot with smart defaults
-                </p>
-                <button class="px-8 py-3 text-white rounded-lg hover:opacity-90 transition-colors text-lg font-medium" style="background: #6878B6;">
-                  Start AI Setup
-                </button>
-              </div>
-            </div>
+            <AiAssistedBuilder on:applied={() => { /* applied */ }} />
           {:else}
             <!-- Manual Build Interface -->
             <div class="flex h-full min-w-0">
@@ -300,9 +286,9 @@
           {/if}
         </div>
       </div>
-      
+
       <!-- Right Panel - Live Preview -->
-      <div class="shrink-0 min-w-[340px] w-[360px] lg:w-[420px] xl:w-[520px] h-full p-6 overflow-y-auto">
+      <div class="w-full md:shrink-0 md:min-w-[340px] md:w-[360px] lg:w-[420px] xl:w-[520px] h-full p-4 md:p-6 overflow-y-auto">
         <!-- Preview Header with Toggle -->
         <div class="flex items-center justify-between mb-4">
           <h3 style="font-weight: 600; font-size: 18px; line-height: 100%; letter-spacing: 0%; color: #6878B6;">Live Bot Preview</h3>

@@ -89,11 +89,12 @@
 			toast.error(`${error}`);
 			return [];
 		});
+		const safeFolderList = Array.isArray(folderList) ? folderList : [];
 
 		folders = {};
 
 		// First pass: Initialize all folder entries
-		for (const folder of folderList) {
+		for (const folder of safeFolderList) {
 			// Ensure folder is added to folders with its data
 			folders[folder.id] = { ...(folders[folder.id] || {}), ...folder };
 
@@ -104,7 +105,7 @@
 		}
 
 		// Second pass: Tie child folders to their parents
-		for (const folder of folderList) {
+		for (const folder of safeFolderList) {
 			if (folder.parent_id) {
 				// Ensure the parent folder is initialized if it doesn't exist
 				if (!folders[folder.parent_id]) {
@@ -130,30 +131,24 @@
 			const response = await getChatbots({ page_size: 10 }); // Load first 10 chatbots
 			console.log('Chatbots API response:', response);
 
-			// Handle different response structures
-			if (response.records && Array.isArray(response.records)) {
-				chatbots = response.records.map((chatbot, index) => ({
-					...chatbot,
-					// Generate a unique ID if not present
-					id: chatbot.id || chatbot.uid || `chatbot-${index}-${Date.now()}`
-				}));
-			} else if (response.results && Array.isArray(response.results)) {
-				chatbots = response.results.map((chatbot, index) => ({
-					...chatbot,
-					// Generate a unique ID if not present
-					id: chatbot.id || chatbot.uid || `chatbot-${index}-${Date.now()}`
-				}));
-			} else if (Array.isArray(response)) {
-				chatbots = response.map((chatbot, index) => ({
-					...chatbot,
-					// Generate a unique ID if not present
-					id: chatbot.id || chatbot.uid || `chatbot-${index}-${Date.now()}`
-				}));
-			} else {
-				chatbots = [];
-			}
+			// Handle different response structures; only include items that have a real id/uid
+			const list = Array.isArray(response?.results)
+				? response.results
+				: Array.isArray(response?.records)
+				? response.records
+				: Array.isArray(response?.data?.results)
+				? response.data.results
+				: Array.isArray(response?.data?.records)
+				? response.data.records
+				: Array.isArray(response)
+				? response
+				: [];
 
-			console.log('Loaded chatbots with IDs:', chatbots);
+			chatbots = list
+				.filter((chatbot) => chatbot && (chatbot.id != null || chatbot.uid != null))
+				.map((chatbot) => ({ ...chatbot, id: String(chatbot.id ?? chatbot.uid) }));
+
+			console.log('Loaded chatbots (filtered, with real IDs):', chatbots);
 
 			if (showToast && chatbots.length > 0) {
 				toast.success(`Loaded ${chatbots.length} chatbot${chatbots.length === 1 ? '' : 's'}`);
@@ -834,8 +829,8 @@
 							<button
 								class="w-full flex items-center space-x-3 px-3 py-2 hover:bg-gray-100 rounded-lg transition cursor-pointer text-left"
 								on:click={() => {
-									// Use the guaranteed unique ID
-									goto(`/c/${chatbot.id}`);
+									// Use the guaranteed unique ID and force Chat screen to treat it as a chatbot id
+									goto(`/c/${chatbot.id}?bot=1`);
 									if ($mobile) {
 										showSidebar.set(false);
 									}

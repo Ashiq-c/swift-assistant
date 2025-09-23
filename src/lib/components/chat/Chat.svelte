@@ -63,6 +63,7 @@
 		getTagsById,
 		updateChatById,
 		sendChatMessage,
+		createChatViaAPI,
 		getChatHistory,
 		streamChatMessage,
 		testChatAPI
@@ -86,6 +87,7 @@
 	import MessageInput from '$lib/components/chat/MessageInput.svelte';
 	import Messages from '$lib/components/chat/Messages.svelte';
 	import Navbar from '$lib/components/chat/Navbar.svelte';
+	import { getChatbot, getChatbots } from '$lib/api/chatbots.js';
 	import ChatControls from './ChatControls.svelte';
 	import EventConfirmDialog from '../common/ConfirmDialog.svelte';
 	import Placeholder from './Placeholder.svelte';
@@ -149,6 +151,10 @@
 	let files = [];
 	let params = {};
 
+	// Bot context when navigating with a chatbot id instead of a chat id
+	let currentBot = null;
+	let botSuggestionPrompts = [];
+
 	$: if (chatIdProp) {
 		navigateHandler();
 	}
@@ -171,8 +177,10 @@
 
 		// Check if we're in frontend-only mode (Custom API)
 		const isFrontendOnly = $config?.name?.includes('Custom API') || $config?.auth === false;
+		// Force chatbot mode if sidebar passed ?bot=1
+		const forceChatbot = $page?.url?.searchParams?.get('bot') === '1';
 
-		if (chatIdProp && !isFrontendOnly && (await loadChat())) {
+		if (chatIdProp && !isFrontendOnly && !forceChatbot && (await loadChat())) {
 			// Ensure chat history is loaded even if loadChat didn't load it
 			if (!chatHistory || chatHistory.length === 0) {
 				try {
@@ -191,6 +199,39 @@
 			window.setTimeout(() => scrollToBottom(), 0);
 
 			await tick();
+
+				// Also attempt to load a chatbot with the same id to populate suggestions/title
+				try {
+					const fetchedBot = await getChatbot(chatIdProp);
+					// Normalize various API response shapes
+					currentBot = fetchedBot?.data ?? fetchedBot?.response ?? fetchedBot?.result ?? fetchedBot;
+					// Normalize conversation starters shape: array of strings or objects with text
+					let startersRaw = currentBot?.conversation_starters ?? currentBot?.conversationStarters ?? [];
+					if (!Array.isArray(startersRaw)) startersRaw = [];
+					botSuggestionPrompts = startersRaw.map((s) => ({ content: typeof s === 'string' ? s : (s?.text ?? '') })).filter(p => p.content);
+					// If chat title is empty or generic, prefer bot name
+					if (!($chatTitle?.trim?.()) || $chatTitle === 'New Chat') {
+						await chatTitle.set(currentBot?.name || $chatTitle);
+					}
+				} catch {}
+
+		} else if (chatIdProp && !isFrontendOnly) {
+			// Treat param as a chatbot id: load bot and show its starters/greeting in placeholder
+			try {
+				const fetchedBot = await getChatbot(chatIdProp);
+				// Normalize various API response shapes
+				currentBot = fetchedBot?.data ?? fetchedBot?.response ?? fetchedBot?.result ?? fetchedBot;
+				// Normalize conversation starters shape
+				let startersRaw = currentBot?.conversation_starters ?? currentBot?.conversationStarters ?? [];
+				if (!Array.isArray(startersRaw)) startersRaw = [];
+				botSuggestionPrompts = startersRaw.map((s) => ({ content: typeof s === 'string' ? s : (s?.text ?? '') })).filter(p => p.content);
+				// Use bot name as provisional title
+				await chatTitle.set(currentBot?.name || '');
+				loading = false;
+			} catch (e) {
+				console.warn('ID is neither chat nor chatbot; redirecting home', e);
+				await goto('/');
+			}
 		} else if (chatIdProp && isFrontendOnly) {
 			// Frontend-only mode: create a new chat without backend
 			console.log('🔧 Frontend-only mode: creating new chat without backend');
@@ -204,6 +245,21 @@
 
 			selectedModels = ['custom-api'];
 			chatTitle.set('New Chat');
+
+				// Best-effort: in frontend-only mode, still load chatbot info for header/suggestions
+				try {
+					const fetchedBot = await getChatbot(chatIdProp);
+					currentBot = fetchedBot?.data ?? fetchedBot?.response ?? fetchedBot?.result ?? fetchedBot;
+					let startersRaw = currentBot?.conversation_starters ?? currentBot?.conversationStarters ?? [];
+					if (!Array.isArray(startersRaw)) startersRaw = [];
+					botSuggestionPrompts = startersRaw.map((s) => ({ content: typeof s === 'string' ? s : (s?.text ?? '') })).filter(p => p.content);
+					if (currentBot?.name) {
+						chatTitle.set(currentBot.name);
+					}
+				} catch (e) {
+					console.warn('Frontend-only: failed to fetch chatbot details', e);
+				}
+
 
 			// Load chat history for frontend-only mode too
 			await loadChatHistoryOnce(chatIdProp);
@@ -895,7 +951,7 @@
 		}
 
 		chat = await getChatById(localStorage.token, $chatId).catch(async (error) => {
-			await goto('/');
+			// Do not navigate away here; allow caller to treat id as a chatbot id
 			return null;
 		});
 
@@ -1510,14 +1566,89 @@
 
 			console.log('🚀 Sending message to chat API with chat ID:', $chatId);
 			console.log('🔧 API Base URL:', import.meta.env.VITE_API_BASE_URL);
+
+				// If we're in chatbot mode (?bot=1), ensure a real chat exists before sending
+				try {
+					const forceChatbot = $page?.url?.searchParams?.get('bot') === '1';
+					if (forceChatbot) {
+						const routeId = chatIdProp; // this is the chatbot id from the URL
+						if (!$chatId || $chatId === routeId) {
+							console.log('🧩 No real chat yet for bot; creating chat via API for chatbot:', routeId);
+							// Resolve numeric primary key for chatbot (backend requires pk, not uid)
+							let chatbotPk = null;
+							try {
+								if (!currentBot) {
+									const fetchedBot = await getChatbot(routeId).catch(() => null);
+									currentBot = fetchedBot?.data ?? fetchedBot?.response ?? fetchedBot?.result ?? fetchedBot;
+								}
+								let maybeId = currentBot?.id;
+								if (typeof maybeId === 'number') {
+									chatbotPk = maybeId;
+								} else if (typeof maybeId === 'string' && /^\d+$/.test(maybeId)) {
+									chatbotPk = Number(maybeId);
+								}
+								if (chatbotPk === null) {
+									const list = await getChatbots({ page_size: 50 }).catch(() => null);
+									const items = Array.isArray(list?.results)
+										? list.results
+										: Array.isArray(list?.records)
+										? list.records
+										: Array.isArray(list?.data?.results)
+										? list.data.results
+										: Array.isArray(list?.data?.records)
+										? list.data.records
+										: Array.isArray(list)
+										? list
+										: [];
+									const found = items.find((it) => String(it?.uid ?? it?.id) === String(routeId));
+									if (found && (typeof found.id === 'number' || /^\d+$/.test(String(found.id)))) {
+										chatbotPk = Number(found.id);
+									}
+								}
+							} catch {}
+							// If numeric pk not available, fall back to UID; backend may accept chatbot_uid
+							const chatbotIdentifier = chatbotPk === null ? String(routeId) : String(chatbotPk);
+							const created = await createChatViaAPI(localStorage.getItem('token') || '', chatbotIdentifier);
+							if (created?.success && created?.chat) {
+								chatId.set(created.chat);
+								try { history.replaceState(null, '', `/c/${created.chat}`); } catch {}
+								console.log('✅ Created chat for bot. New chat id:', created.chat);
+							} else {
+								console.warn('⚠️ Failed to create chat for chatbot', created);
+								toast.error('Could not start chat for this bot.');
+								return;
+							}
+						}
+					}
+				} catch (err) {
+					console.error('❌ Error ensuring chat for chatbot:', err);
+					toast.error('Failed to start chat for this bot');
+					return;
+				}
+
 			console.log('🔑 Token exists:', !!localStorage.getItem('token'));
 
 			// Run comprehensive API test to diagnose issues
 			console.log('🧪 Running API diagnostics...');
 			await testChatAPI();
 
+			// Build an effective prompt using chatbot persona/guardrails when in bot mode
+			let effectivePrompt = prompt;
+			try {
+				const inBotMode = ($page?.url?.searchParams?.get('bot') === '1') || !!currentBot;
+				if (inBotMode && currentBot) {
+					const personaParts: string[] = [];
+					if (currentBot?.name) personaParts.push(`Name: ${currentBot.name}`);
+					if (currentBot?.bot_role) personaParts.push(`Role: ${currentBot.bot_role}`);
+					if (currentBot?.description) personaParts.push(`Description: ${currentBot.description}`);
+					if (currentBot?.instructions) personaParts.push(`Instructions: ${currentBot.instructions}`);
+					const personaText = personaParts.join('\n');
+					const guardrail = 'You must strictly stay within the bot\'s described domain. If the user asks for topics outside this scope (e.g., different programming languages if you are a Python tutor), politely refuse and steer them back to the supported scope.';
+					effectivePrompt = `System:\n${personaText}\n\nPolicy: ${guardrail}\n\nUser: ${prompt}`;
+				}
+			} catch {}
 			// Call the new chat API with the specific chat ID
-			const response = await sendChatMessage($chatId, prompt);
+			const response = await sendChatMessage($chatId, effectivePrompt);
 
 			console.log('📥 Raw API response:', response);
 
@@ -2698,6 +2829,10 @@
 								<Placeholder
 									{history}
 									{selectedModels}
+									botName={currentBot?.name}
+									botRole={currentBot?.bot_role}
+									botGreeting={currentBot?.greeting_message}
+									botSuggestionPrompts={botSuggestionPrompts}
 									bind:messageInput
 									bind:files
 									bind:prompt
