@@ -1,7 +1,7 @@
 <script lang="ts">
-	import * as pdfjs from 'pdfjs-dist';
-	import * as pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs';
-	pdfjs.GlobalWorkerOptions.workerSrc = import.meta.url + 'pdfjs-dist/build/pdf.worker.mjs';
+	// import * as pdfjs from 'pdfjs-dist'; // Temporarily disabled to reduce bundle size
+	// import * as pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs';
+	// pdfjs.GlobalWorkerOptions.workerSrc = import.meta.url + 'pdfjs-dist/build/pdf.worker.mjs';
 
 
 
@@ -539,12 +539,11 @@
 		} else {
 			// If temporary chat is enabled, we just add the file to the list without uploading it.
 
-			const content = await extractContentFromFile(file, pdfjsLib).catch((error) => {
-				toast.error(
-					$i18n.t('Failed to extract content from the file: {{error}}', { error: error })
-				);
-				return null;
-			});
+			// PDF extraction temporarily disabled to reduce bundle size
+			const content = null;
+			if (file.type === 'application/pdf') {
+				toast.error('PDF file processing is temporarily disabled to reduce bundle size');
+			}
 
 			if (content === null) {
 				toast.error($i18n.t('Failed to extract content from the file.'));

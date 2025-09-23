@@ -1,19 +1,20 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
-import { viteStaticCopy } from 'vite-plugin-static-copy';
+// import { viteStaticCopy } from 'vite-plugin-static-copy'; // Disabled to reduce bundle size
 
 export default defineConfig({
 	plugins: [
 		sveltekit(),
-		viteStaticCopy({
-			targets: [
-				{
-					// only copy needed WASM files for client-side usage
-					src: 'node_modules/onnxruntime-web/dist/*.jsep.*',
-					dest: 'wasm'
-				}
-			]
-		})
+		// viteStaticCopy disabled - ONNX runtime removed to reduce bundle size
+		// viteStaticCopy({
+		// 	targets: [
+		// 		{
+		// 			// only copy needed WASM files for client-side usage
+		// 			src: 'node_modules/onnxruntime-web/dist/*.jsep.*',
+		// 			dest: 'wasm'
+		// 		}
+		// 	]
+		// })
 	],
 	define: {
 		APP_VERSION: JSON.stringify(process.env.npm_package_version),
@@ -28,7 +29,6 @@ export default defineConfig({
 				manualChunks: (id) => {
 					if (id.includes('node_modules')) {
 						if (id.includes('svelte')) return 'vendor';
-						if (id.includes('chart.js') || id.includes('mermaid')) return 'charts';
 						if (id.includes('codemirror')) return 'codemirror';
 						return 'vendor';
 					}
@@ -64,17 +64,11 @@ export default defineConfig({
 	},
 	ssr: {
 		external: [
-			'@huggingface/transformers',
-			'pdfjs-dist',
 			'sharp',
 			'canvas',
-			'html2canvas-pro',
 			'jspdf',
-			'mermaid',
-			'chart.js',
 			'katex',
 			'highlight.js',
-			'leaflet',
 			'prosemirror-view',
 			'prosemirror-state',
 			'prosemirror-model',
