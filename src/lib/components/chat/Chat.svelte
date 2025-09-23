@@ -1637,6 +1637,10 @@
 			try {
 				const inBotMode = ($page?.url?.searchParams?.get('bot') === '1') || !!currentBot;
 				if (inBotMode && currentBot) {
+					// Keep the original user prompt for display
+					effectivePrompt = prompt;
+
+					// Add bot persona as system context (this will be handled separately in the API call)
 					const personaParts: string[] = [];
 					if (currentBot?.name) personaParts.push(`Name: ${currentBot.name}`);
 					if (currentBot?.bot_role) personaParts.push(`Role: ${currentBot.bot_role}`);
@@ -1644,7 +1648,9 @@
 					if (currentBot?.instructions) personaParts.push(`Instructions: ${currentBot.instructions}`);
 					const personaText = personaParts.join('\n');
 					const guardrail = 'You must strictly stay within the bot\'s described domain. If the user asks for topics outside this scope (e.g., different programming languages if you are a Python tutor), politely refuse and steer them back to the supported scope.';
-					effectivePrompt = `System:\n${personaText}\n\nPolicy: ${guardrail}\n\nUser: ${prompt}`;
+
+					// Store the system context for use in API calls
+					window.currentBotSystemContext = `System:\n${personaText}\n\nPolicy: ${guardrail}`;
 				}
 			} catch {}
 			// Call the new chat API with the specific chat ID
@@ -2565,7 +2571,7 @@
 
 		// Convert each chat history item into proper message format
 		chatHistory.forEach((msg, index) => {
-			if (msg.prompt) {
+			if (msg.user) {
 				// Create user message
 				const userMessageId = `history-user-${index}`;
 				if (!firstHistoryMessageId) firstHistoryMessageId = userMessageId;
@@ -2575,7 +2581,7 @@
 					parentId: lastMessageId,
 					childrenIds: [],
 					role: 'user',
-					content: msg.prompt,
+					content: msg.user,
 					timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
 					models: selectedModels || ['static-model']
 				};

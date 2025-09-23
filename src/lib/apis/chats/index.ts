@@ -1,5 +1,5 @@
 import { WEBUI_API_BASE_URL } from '$lib/constants';
-import { getTimeRange } from '$lib/utils';
+import { getTimeRange, extractUserMessage } from '$lib/utils';
 
 // Static mock data for chat management
 const STATIC_CHATS_KEY = 'static_chats';
@@ -105,9 +105,10 @@ export const getChatList = async (token: string = '', page: number | null = null
     // Static implementation using localStorage
     const chats = getStoredChats();
 
-    // Add time_range to each chat
+    // Add time_range to each chat and clean titles
     const chatsWithTimeRange = chats.map((chat) => ({
         ...chat,
+        title: extractUserMessage(chat.title),
         time_range: getTimeRange(chat.updated_at)
     }));
 
@@ -392,9 +393,10 @@ export const getPinnedChatList = async (token: string = '') => {
     const chats = getStoredChats();
     const pinnedChats = chats.filter(chat => chat.pinned);
 
-    // Add time_range to each chat
+    // Add time_range to each chat and clean titles
     const pinnedChatsWithTimeRange = pinnedChats.map((chat) => ({
         ...chat,
+        title: extractUserMessage(chat.title),
         time_range: getTimeRange(chat.updated_at)
     }));
 
@@ -1736,26 +1738,49 @@ export const getRecentChats = async () => {
     try {
         // Get token from localStorage
         const authToken = localStorage.getItem('token');
+        console.log('🔑 getRecentChats - Token exists:', !!authToken);
+        console.log('🔗 getRecentChats - API URL:', `${import.meta.env.VITE_API_BASE_URL}api/v1/recent-chats/`);
 
         const headers: HeadersInit = {};
         if (authToken) {
             headers['Authorization'] = `Bearer ${authToken}`;
         }
 
-        const requestOptions = {
+        const requestOptions: RequestInit = {
             method: 'GET',
             headers,
-            redirect: 'follow'
+            redirect: 'follow' as RequestRedirect
         };
+        console.log('📤 getRecentChats - Request options:', requestOptions);
+
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}api/v1/recent-chats/`, requestOptions);
+        console.log('📥 getRecentChats - Response status:', response.status);
+
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorText = await response.text();
+            console.error('❌ getRecentChats - Error response:', errorText);
+            throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
         }
         const result = await response.json();
+        console.log('✅ getRecentChats - Success result:', result);
+
+        // Clean the chat titles by extracting user messages from system prompts
+        if (result && result.success && Array.isArray(result.response)) {
+            result.response = result.response.map(chat => {
+                const originalTitle = chat.title;
+                const cleanedTitle = extractUserMessage(chat.title);
+                console.log('🧹 Cleaning chat title:', { originalTitle, cleanedTitle });
+                return {
+                    ...chat,
+                    title: cleanedTitle
+                };
+            });
+        }
+
         return result;
     } catch (err) {
         error = err;
-        console.error('Error fetching recent chats:', err);
+        console.error('❌ getRecentChats - Error:', err);
         return null;
     }
 };
@@ -1765,26 +1790,35 @@ export const getChatHistory = async (chatId) => {
     try {
         // Get token from localStorage
         const authToken = localStorage.getItem('token');
+        console.log('🔑 getChatHistory - Token exists:', !!authToken, 'for chatId:', chatId);
+        console.log('🔗 getChatHistory - API URL:', `${import.meta.env.VITE_API_BASE_URL}api/v1/chat-history/${chatId}/`);
 
         const headers: HeadersInit = {};
         if (authToken) {
             headers['Authorization'] = `Bearer ${authToken}`;
         }
 
-        const requestOptions = {
+        const requestOptions: RequestInit = {
             method: 'GET',
             headers,
-            redirect: 'follow'
+            redirect: 'follow' as RequestRedirect
         };
+        console.log('📤 getChatHistory - Request options:', requestOptions);
+
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}api/v1/chat-history/${chatId}/`, requestOptions);
+        console.log('📥 getChatHistory - Response status:', response.status);
+
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorText = await response.text();
+            console.error('❌ getChatHistory - Error response:', errorText);
+            throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
         }
         const result = await response.json();
+        console.log('✅ getChatHistory - Success result:', result);
         return result;
     } catch (err) {
         error = err;
-        console.error('Error fetching chat history:', err);
+        console.error('❌ getChatHistory - Error:', err);
         return null;
     }
 };

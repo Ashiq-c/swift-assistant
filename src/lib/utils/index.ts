@@ -560,6 +560,69 @@ export const extractCurlyBraceWords = (text) => {
 	return matches;
 };
 
+/**
+ * Extract the actual user message from a system prompt that contains user input
+ * @param content - The message content that may contain system prompts
+ * @returns The cleaned user message
+ */
+export const extractUserMessage = (content: string): string => {
+	if (!content || typeof content !== 'string') {
+		return content || '';
+	}
+
+	// Pattern to match "User: <actual message>" at the end of system prompts
+	const userMessagePattern = /(?:^|\n)User:\s*(.+?)(?:\n|$)/i;
+	const match = content.match(userMessagePattern);
+
+	if (match && match[1]) {
+		// Return the extracted user message, trimmed
+		return match[1].trim();
+	}
+
+	// If no "User:" pattern found, check if the content looks like a system prompt
+	// by looking for common system prompt indicators
+	const systemPromptIndicators = [
+		'System:',
+		'Name:',
+		'Role:',
+		'Description:',
+		'Instructions:',
+		'Policy:'
+	];
+
+	const hasSystemPromptIndicators = systemPromptIndicators.some(indicator =>
+		content.includes(indicator)
+	);
+
+	if (hasSystemPromptIndicators) {
+		// For truncated system prompts (like "System:\r\nName: Training & Onboarding\r\nRole: Exp..."),
+		// return a generic title since we can't extract the actual user message
+		if (content.includes('...') || content.length < 100) {
+			return 'Chat with Assistant';
+		}
+
+		// Try to extract the last line that doesn't start with a system indicator
+		const lines = content.split('\n').map(line => line.trim()).filter(line => line);
+
+		for (let i = lines.length - 1; i >= 0; i--) {
+			const line = lines[i];
+			const isSystemLine = systemPromptIndicators.some(indicator =>
+				line.startsWith(indicator)
+			);
+
+			if (!isSystemLine && line.length > 0) {
+				return line;
+			}
+		}
+
+		// If all lines are system lines, return a generic title
+		return 'Chat with Assistant';
+	}
+
+	// If no system prompt patterns found, return the original content
+	return content;
+};
+
 export const removeLastWordFromString = (inputString, wordString) => {
 	console.log('inputString', inputString);
 	// Split the string by newline characters to handle lines separately

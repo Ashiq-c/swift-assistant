@@ -43,6 +43,7 @@
 	import { getChatbots } from '$lib/api/chatbots.js';
 	import { createNewFolder, getFolders, updateFolderParentIdById } from '$lib/apis/folders';
 	import { WEBUI_BASE_URL } from '$lib/constants';
+	import { extractUserMessage } from '$lib/utils';
 
 	import ArchivedChatsModal from './ArchivedChatsModal.svelte';
 	import UserMenu from './Sidebar/UserMenu.svelte';
@@ -893,7 +894,7 @@
 								class="px-3 py-2 hover:bg-gray-100 rounded-lg transition cursor-pointer {chat.id === $chatId ? 'bg-blue-100' : ''}"
 								on:click={() => goto(`/c/${chat.id}`)}
 							>
-								<p class="text-gray-700 text-sm truncate">{chat.title}</p>
+								<p class="text-gray-700 text-sm truncate">{extractUserMessage(chat.title)}</p>
 							</div>
 						{/each}
 					{/if}
