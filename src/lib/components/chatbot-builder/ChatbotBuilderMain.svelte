@@ -13,7 +13,8 @@
   import BotCapabilitiesSection from './BotCapabilitiesSection.svelte';
   import SessionControlSection from './SessionControlSection.svelte';
   import LiveBotPreview from './LiveBotPreview.svelte';
-  import AiAssistedBuilder from './AiAssistedBuilder.svelte';
+  import ConversationalAiBuilder from './ConversationalAiBuilder.svelte';
+  import BotTestingPanel from './BotTestingPanel.svelte';
 
 
   let config = {};
@@ -244,7 +245,7 @@
         <!-- Section Content -->
         <div class="flex-1 min-h-0 overflow-hidden">
           {#if currentBuildMethod === 'ai'}
-            <AiAssistedBuilder on:applied={() => { /* applied */ }} />
+            <ConversationalAiBuilder on:applied={() => { /* applied */ }} />
           {:else}
             <!-- Manual Build Interface -->
             <div class="flex h-full min-w-0">
@@ -412,6 +413,13 @@
         {/if}
 
         <LiveBotPreview botName={config.name || 'Your Chatbot'} activeTab={activePreviewTab} persona={selectedPersona} />
+
+        <!-- Testing Panel -->
+        {#if $chatbotConfig.id}
+          <div class="mt-6">
+            <BotTestingPanel botId={String($chatbotConfig.id)} className="max-h-96" />
+          </div>
+        {/if}
       </div>
     </div>
   </div>
