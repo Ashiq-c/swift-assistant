@@ -1,4 +1,4 @@
-import { browser } from '$app/environment';
+import { browser, dev } from '$app/environment';
 import { showSuccessPopup, showErrorPopup } from '$lib/stores/popup.js';
 import { CUSTOM_API_BASE_URL } from '$lib/constants';
 
@@ -20,8 +20,13 @@ function showNotification(message, type = 'info') {
 // Get API base URL
 const getApiBaseUrl = () => {
   if (browser) {
-    // In browser, use the proxy configured in vite.config.ts
-    return '/custom-api';
+    if (dev) {
+      // Development mode - use the proxy configured in vite.config.ts
+      return '/custom-api';
+    } else {
+      // Production mode - use the actual API URL
+      return CUSTOM_API_BASE_URL;
+    }
   }
   // Server-side fallback - use environment variable
   return CUSTOM_API_BASE_URL;
