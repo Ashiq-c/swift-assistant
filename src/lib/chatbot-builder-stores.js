@@ -79,6 +79,14 @@ export async function saveConfig() {
     const result = await createChatbot(apiData);
     console.log('Chatbot created successfully:', result);
 
+    // Persist returned id (and keep other fields) so preview/chat uses the saved bot
+    try {
+      const newId = result?.id ?? result?.data?.id ?? null;
+      if (newId) {
+        chatbotConfig.update(cfg => ({ ...cfg, id: String(newId) }));
+      }
+    } catch {}
+
     isDirty.set(false);
     return { success: true, data: result };
   } catch (error) {
@@ -112,7 +120,11 @@ function parseAndSetErrors(errorMessage) {
           'grade_level': 'gradeLevel',
           'bot_role': 'botRole',
           'greeting_message': 'greetingMessage',
-          'conversation_starters': 'conversationStarters'
+          'conversation_starters': 'conversationStarters',
+          'curriculum_info': 'curriculumInfo',
+          'analysis_scales': 'gradingRubric',
+          'chatbot_files': 'knowledgeFiles', // Map to the field used by existing UI
+          'grading_rubric': 'gradingRubric'
         };
 
         const mappedField = fieldMapping[field] || field;

@@ -42,6 +42,13 @@
 	export let files = [];
 	export let messageInput = null;
 
+	// Optional bot context (when navigating from a saved chatbot)
+	export let botName: string = '';
+	export let botRole: string = '';
+	export let botGreeting: string = '';
+	export let botImage: string = '';
+	export let botSuggestionPrompts: Array<{ content: string; title?: string[] }> = [];
+
 	export let selectedToolIds = [];
 	export let selectedFilterIds = [];
 
@@ -113,32 +120,52 @@
 				<div class="flex flex-row justify-center gap-3 @sm:gap-3.5 w-fit px-5 max-w-xl">
 					<div class="flex shrink-0 justify-center">
 						<div class="flex -space-x-4 mb-0.5" in:fade={{ duration: 100 }}>
-							{#each models as model, modelIdx}
+							{#if botImage && botName}
+								<!-- Show bot image when in bot context -->
 								<Tooltip
-									content={(models[modelIdx]?.info?.meta?.tags ?? [])
-										.map((tag) => tag.name.toUpperCase())
-										.join(', ')}
+									content={botName}
 									placement="top"
 								>
-									<button
-										aria-hidden={models.length <= 1}
-										aria-label={$i18n.t('Get information on {{name}} in the UI', {
-											name: models[modelIdx]?.name
-										})}
-										on:click={() => {
-											selectedModelIdx = modelIdx;
-										}}
-									>
+									<div class="size-9 @sm:size-10 rounded-full border-[1px] border-gray-100 dark:border-none overflow-hidden">
 										<img
 											crossorigin="anonymous"
-											src={'/assets/images/avatar.png'}
-											class=" size-9 @sm:size-10 rounded-full border-[1px] border-gray-100 dark:border-none"
-											aria-hidden="true"
+											src={botImage}
+											alt="{botName} avatar"
+											class="w-full h-full object-cover"
 											draggable="false"
 										/>
-									</button>
+									</div>
 								</Tooltip>
-							{/each}
+							{:else}
+								<!-- Show model avatars when not in bot context -->
+								{#each models as model, modelIdx}
+									<Tooltip
+										content={(models[modelIdx]?.info?.meta?.tags ?? [])
+											.map((tag) => tag.name.toUpperCase())
+											.join(', ')}
+										placement="top"
+									>
+										<button
+											aria-hidden={models.length <= 1}
+											aria-label={$i18n.t('Get information on {{name}} in the UI', {
+												name: models[modelIdx]?.name
+											})}
+											on:click={() => {
+												selectedModelIdx = modelIdx;
+											}}
+										>
+											<img
+												crossorigin="anonymous"
+												src={'/assets/images/avatar.png'}
+												alt="Model avatar"
+												class=" size-9 @sm:size-10 rounded-full border-[1px] border-gray-100 dark:border-none"
+												aria-hidden="true"
+												draggable="false"
+											/>
+										</button>
+									</Tooltip>
+								{/each}
+							{/if}
 						</div>
 					</div>
 
@@ -146,7 +173,9 @@
 						class=" text-3xl @sm:text-3xl line-clamp-1 flex items-center"
 						in:fade={{ duration: 100 }}
 					>
-						{#if models[selectedModelIdx]?.name}
+						{#if botName}
+							<span class="line-clamp-1">{botName}</span>
+						{:else if models[selectedModelIdx]?.name}
 							<Tooltip
 								content={models[selectedModelIdx]?.name}
 								placement="top"
@@ -164,6 +193,12 @@
 
 				<div class="flex mt-1 mb-2">
 					<div in:fade={{ duration: 100, delay: 50 }}>
+						{#if botRole || botGreeting}
+							<div class="mt-0.5 px-2 text-sm font-normal text-gray-500 dark:text-gray-400 line-clamp-2 max-w-xl">
+								{botRole || botGreeting}
+							</div>
+						{/if}
+
 						{#if models[selectedModelIdx]?.info?.meta?.description ?? null}
 							<Tooltip
 								className=" w-fit"
@@ -247,9 +282,9 @@
 	<div class="mx-auto max-w-2xl font-primary mt-2" in:fade={{ duration: 200, delay: 200 }}>
 		<div class="mx-5">
 			<Suggestions
-				suggestionPrompts={models[selectedModelIdx]?.info?.meta?.suggestion_prompts ??
-					$config?.default_prompt_suggestions ??
-					[]}
+				suggestionPrompts={botSuggestionPrompts?.length
+					? botSuggestionPrompts
+					: (models[selectedModelIdx]?.info?.meta?.suggestion_prompts ?? $config?.default_prompt_suggestions ?? [])}
 				inputValue={prompt}
 				{onSelect}
 			/>

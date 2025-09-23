@@ -5,7 +5,7 @@
 
 	import { models, settings } from '$lib/stores';
 	import { user as _user } from '$lib/stores';
-	import { copyToClipboard as _copyToClipboard, formatDate } from '$lib/utils';
+	import { copyToClipboard as _copyToClipboard, formatDate, extractUserMessage } from '$lib/utils';
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
 	import Name from './Name.svelte';
@@ -64,7 +64,7 @@
 
 	const editMessageHandler = async () => {
 		edit = true;
-		editedContent = message.content;
+		editedContent = extractUserMessage(message.content);
 		editedFiles = message.files;
 
 		await tick();
@@ -109,18 +109,18 @@
 />
 
 <div
-	class=" flex w-full user-message group"
+	class="flex w-full user-message group"
 	dir={$settings.chatDirection}
 	id="message-{message.id}"
 >
 	{#if !($settings?.chatBubble ?? true)}
-		<div class={`shrink-0 ltr:mr-3 rtl:ml-3 mt-1`}>
+		<div class="shrink-0 ltr:mr-3 rtl:ml-3 mt-1">
 			<ProfileImage
 				src={message.user
 					? ($models.find((m) => m.id === message.user)?.info?.meta?.profile_image_url ??
 						`${WEBUI_BASE_URL}/user.png`)
 					: (user?.profile_image_url ?? `${WEBUI_BASE_URL}/user.png`)}
-				className={'size-8 user-message-profile-image'}
+				className="size-8 user-message-profile-image"
 			/>
 		</div>
 	{/if}
@@ -163,11 +163,11 @@
 		<div class="chat-{message.role} w-full min-w-full markdown-prose">
 			{#if edit !== true}
 				{#if message.files}
-					<div class="mb-1 w-full flex flex-col justify-end overflow-x-auto gap-1 flex-wrap">
+					<div class="mb-2 w-full flex flex-col {($settings?.chatBubble ?? true) ? 'items-end' : 'items-start'} gap-2">
 						{#each message.files as file}
-							<div class={($settings?.chatBubble ?? true) ? 'self-end' : ''}>
+							<div class="max-w-sm">
 								{#if file.type === 'image'}
-									<Image src={file.url} imageClassName=" max-h-96 rounded-lg" />
+									<Image src={file.url} imageClassName="max-h-64 rounded-lg shadow-sm" />
 								{:else}
 									<FileItem
 										item={file}
@@ -175,7 +175,7 @@
 										name={file.name}
 										type={file.type}
 										size={file?.size}
-										colorClassName="bg-white dark:bg-gray-850 "
+										colorClassName="bg-white dark:bg-gray-850 border border-gray-200 dark:border-gray-700"
 									/>
 								{/if}
 							</div>
@@ -310,22 +310,24 @@
 					<div class="w-full">
 						<div class="flex {($settings?.chatBubble ?? true) ? 'justify-end pb-1' : 'w-full'}">
 							<div
-								class="rounded-3xl {($settings?.chatBubble ?? true)
-									? `max-w-[90%] px-5 py-2  bg-gray-50 dark:bg-gray-850 ${
+								class="{($settings?.chatBubble ?? true)
+									? `rounded-3xl max-w-[85%] px-4 py-2.5 bg-gray-50 dark:bg-gray-850 ${
 											message.files ? 'rounded-tr-lg' : ''
-										}`
-									: ' w-full'}"
+										} shadow-sm`
+									: 'w-full rounded-lg p-3 bg-transparent border border-gray-200 dark:border-gray-700'}"
 							>
 								{#if message.content}
-									<Markdown id={message.id} content={message.content} />
+									<div class="text-sm leading-relaxed">
+										<Markdown id={message.id} content={extractUserMessage(message.content)} />
+									</div>
 								{/if}
 							</div>
 						</div>
 
 						<div
-							class=" flex {($settings?.chatBubble ?? true)
-								? 'justify-end'
-								: ''}  text-gray-600 dark:text-gray-500"
+							class="flex {($settings?.chatBubble ?? true)
+								? 'justify-end mt-1'
+								: 'mt-2'} text-gray-500 dark:text-gray-400"
 						>
 							{#if !($settings?.chatBubble ?? true)}
 								{#if siblings.length > 1}
@@ -453,7 +455,7 @@
 								<button
 									class="invisible group-hover:visible p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg dark:hover:text-white hover:text-black transition"
 									on:click={() => {
-										copyToClipboard(message.content);
+										copyToClipboard(extractUserMessage(message.content));
 									}}
 								>
 									<svg

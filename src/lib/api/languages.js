@@ -4,25 +4,30 @@ import { browser } from '$app/environment';
 const getApiBaseUrl = () => {
   if (browser) {
     // In browser, use the proxy configured in vite.config.ts
-    const baseUrl = '/custom-api';
-    console.log('Using API base URL (browser):', baseUrl);
-    return baseUrl;
+    return '/custom-api';
   }
   // Server-side fallback
-  const baseUrl = 'http://192.168.2.82:8000/';
-  console.log('Using API base URL (server):', baseUrl);
-  return baseUrl;
+  return 'http://127.0.0.1:8000/';
 };
 
 /**
  * Fetch languages from the API
  * @returns {Promise<Array>} Array of language objects with id and name
  */
+// Cache for languages to avoid repeated API calls
+let languagesCache = null;
+let cacheTimestamp = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 export async function fetchLanguages() {
+  // Check cache first
+  if (languagesCache && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURATION)) {
+    return languagesCache;
+  }
+
   try {
     const apiBaseUrl = getApiBaseUrl();
     const url = `${apiBaseUrl}/v1/languages/`;
-    console.log('Fetching languages from:', url);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -30,16 +35,16 @@ export async function fetchLanguages() {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      mode: 'cors'
+      mode: 'cors',
+      // Add timeout to prevent hanging requests
+      signal: AbortSignal.timeout(10000) // 10 second timeout
     });
-    console.log('Response status:', response.status);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const languages = await response.json();
-    console.log('Raw API response:', languages);
 
     // Validate response format
     if (!Array.isArray(languages)) {
@@ -65,15 +70,28 @@ export async function fetchLanguages() {
       id: lang.id // Keep original id for reference
     }));
 
-    console.log('Transformed languages:', transformedLanguages);
+    // Cache the successful result
+    languagesCache = transformedLanguages;
+    cacheTimestamp = Date.now();
+
     return transformedLanguages;
 
   } catch (error) {
     console.error('Error fetching languages:', error);
 
-    // Return fallback languages if API fails
-    console.log('Using fallback languages');
-    return getFallbackLanguages();
+    // If we have cached data, use it even if expired
+    if (languagesCache) {
+      return languagesCache;
+    }
+
+    // Return fallback languages if API fails and no cache
+    const fallbackLanguages = getFallbackLanguages();
+
+    // Cache fallback languages too
+    languagesCache = fallbackLanguages;
+    cacheTimestamp = Date.now();
+
+    return fallbackLanguages;
   }
 }
 
@@ -108,15 +126,23 @@ export function getLanguageName(code, languages) {
 }
 
 /**
+ * Clear the languages cache (useful for testing or when API is updated)
+ */
+export function clearLanguagesCache() {
+  languagesCache = null;
+  cacheTimestamp = null;
+}
+
+/**
  * Check if API is available
  * @returns {Promise<boolean>} True if API is reachable
  */
 export async function checkLanguagesApiHealth() {
   try {
     const apiBaseUrl = getApiBaseUrl();
-    const response = await fetch(`${apiBaseUrl}/api/v1/languages/`, {
+    const response = await fetch(`${apiBaseUrl}/v1/languages/`, {
       method: 'HEAD',
-      timeout: 5000
+      signal: AbortSignal.timeout(5000) // 5 second timeout
     });
     return response.ok;
   } catch (error) {
