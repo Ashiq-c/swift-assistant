@@ -26,6 +26,7 @@
   let showNotifications = false;
   let activePreviewTab = 'manual';
   let selectedPersona = null;
+  let showAiSetupLanding = true; // Show the "Start AI Setup" landing page initially
 
 
   // Subscribe to stores
@@ -66,6 +67,14 @@
 
   function setBuildMethod(method) {
     buildMethod.set(method);
+    // Reset AI setup landing when switching build methods
+    if (method === 'ai') {
+      showAiSetupLanding = true;
+    }
+  }
+
+  function startAiSetup() {
+    showAiSetupLanding = false;
   }
 
   async function handleSave() {
@@ -245,7 +254,31 @@
         <!-- Section Content -->
         <div class="flex-1 min-h-0 overflow-hidden">
           {#if currentBuildMethod === 'ai'}
-            <ConversationalAiBuilder on:applied={() => { /* applied */ }} />
+            {#if showAiSetupLanding}
+              <!-- AI-Assisted Build Landing Page -->
+              <div class="flex items-center justify-center h-full p-6">
+                <div class="text-center max-w-md w-full p-12 rounded-2xl bg-gray-50">
+                  <div class="w-32 h-32 mx-auto mb-8 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center">
+                    <div class="w-16 h-16 bg-white rounded-xl shadow-lg flex items-center justify-center">
+                      <span class="text-3xl">🤖</span>
+                    </div>
+                  </div>
+                  <h3 class="text-2xl font-bold text-gray-900 mb-4">AI-Assisted Build</h3>
+                  <p class="text-gray-600 mb-8 leading-relaxed">
+                    Have a conversation with our AI to create your chatbot with smart defaults and personalized configurations
+                  </p>
+                  <button
+                    class="px-6 py-3 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    style="background: #6878B6;"
+                    on:click={startAiSetup}
+                  >
+                    Start AI Setup
+                  </button>
+                </div>
+              </div>
+            {:else}
+              <ConversationalAiBuilder on:applied={() => { /* applied */ }} />
+            {/if}
           {:else}
             <!-- Manual Build Interface -->
             <div class="flex h-full min-w-0">

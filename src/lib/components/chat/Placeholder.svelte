@@ -46,6 +46,7 @@
 	export let botName: string = '';
 	export let botRole: string = '';
 	export let botGreeting: string = '';
+	export let botImage: string = '';
 	export let botSuggestionPrompts: Array<{ content: string; title?: string[] }> = [];
 
 	export let selectedToolIds = [];
@@ -119,32 +120,52 @@
 				<div class="flex flex-row justify-center gap-3 @sm:gap-3.5 w-fit px-5 max-w-xl">
 					<div class="flex shrink-0 justify-center">
 						<div class="flex -space-x-4 mb-0.5" in:fade={{ duration: 100 }}>
-							{#each models as model, modelIdx}
+							{#if botImage && botName}
+								<!-- Show bot image when in bot context -->
 								<Tooltip
-									content={(models[modelIdx]?.info?.meta?.tags ?? [])
-										.map((tag) => tag.name.toUpperCase())
-										.join(', ')}
+									content={botName}
 									placement="top"
 								>
-									<button
-										aria-hidden={models.length <= 1}
-										aria-label={$i18n.t('Get information on {{name}} in the UI', {
-											name: models[modelIdx]?.name
-										})}
-										on:click={() => {
-											selectedModelIdx = modelIdx;
-										}}
-									>
+									<div class="size-9 @sm:size-10 rounded-full border-[1px] border-gray-100 dark:border-none overflow-hidden">
 										<img
 											crossorigin="anonymous"
-											src={'/assets/images/avatar.png'}
-											class=" size-9 @sm:size-10 rounded-full border-[1px] border-gray-100 dark:border-none"
-											aria-hidden="true"
+											src={botImage}
+											alt="{botName} avatar"
+											class="w-full h-full object-cover"
 											draggable="false"
 										/>
-									</button>
+									</div>
 								</Tooltip>
-							{/each}
+							{:else}
+								<!-- Show model avatars when not in bot context -->
+								{#each models as model, modelIdx}
+									<Tooltip
+										content={(models[modelIdx]?.info?.meta?.tags ?? [])
+											.map((tag) => tag.name.toUpperCase())
+											.join(', ')}
+										placement="top"
+									>
+										<button
+											aria-hidden={models.length <= 1}
+											aria-label={$i18n.t('Get information on {{name}} in the UI', {
+												name: models[modelIdx]?.name
+											})}
+											on:click={() => {
+												selectedModelIdx = modelIdx;
+											}}
+										>
+											<img
+												crossorigin="anonymous"
+												src={'/assets/images/avatar.png'}
+												alt="Model avatar"
+												class=" size-9 @sm:size-10 rounded-full border-[1px] border-gray-100 dark:border-none"
+												aria-hidden="true"
+												draggable="false"
+											/>
+										</button>
+									</Tooltip>
+								{/each}
+							{/if}
 						</div>
 					</div>
 

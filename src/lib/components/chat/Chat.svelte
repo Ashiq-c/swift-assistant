@@ -2746,10 +2746,38 @@
 								}}
 							>
 								<div class=" h-full w-full flex flex-col">
-
+									<!-- Chatbot Name Header (when in bot mode) -->
+									{#if (currentBot && currentBot.name) || ($page?.url?.searchParams?.get('bot') === '1' && $chatTitle && $chatTitle !== 'New Chat' && $chatTitle !== '')}
+										<div class="flex items-center justify-center py-3 px-4 border-b border-gray-100 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+											<div class="flex items-center space-x-3 max-w-xs">
+												{#if currentBot && currentBot.picture}
+													<img
+														src={currentBot.picture}
+														alt="{currentBot.name} avatar"
+														class="w-6 h-6 rounded-full object-cover flex-shrink-0"
+													/>
+												{:else}
+													<div class="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+														<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.476L3 21l2.476-5.094A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
+														</svg>
+													</div>
+												{/if}
+												<div class="flex items-center space-x-2 min-w-0">
+													<span class="text-sm font-medium text-gray-900 truncate">
+														{currentBot && currentBot.name ? currentBot.name : $chatTitle}
+													</span>
+													<svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+														<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+													</svg>
+												</div>
+											</div>
+										</div>
+									{/if}
 
 									<!-- Main chat messages -->
 									<Messages
+										className={currentBot && currentBot.name ? 'h-full flex pt-2' : 'h-full flex pt-8'}
 										chatId={$chatId}
 										bind:history
 										bind:autoScroll
@@ -2766,6 +2794,7 @@
 										{addMessages}
 										bottomPadding={files.length > 0}
 										{onSelect}
+										{currentBot}
 									/>
 								</div>
 							</div>
@@ -2838,6 +2867,7 @@
 									botName={currentBot?.name}
 									botRole={currentBot?.bot_role}
 									botGreeting={currentBot?.greeting_message}
+									botImage={(currentBot && currentBot.picture) ? currentBot.picture : ''}
 									botSuggestionPrompts={botSuggestionPrompts}
 									bind:messageInput
 									bind:files
