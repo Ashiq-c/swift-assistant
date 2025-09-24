@@ -1183,6 +1183,49 @@ export const getUsage = async (token: string = '') => {
 };
 
 export const getBackendConfig = async () => {
+	// Import IS_FRONTEND_ONLY flag
+	const { IS_FRONTEND_ONLY } = await import('$lib/constants');
+
+	// If running in frontend-only mode, return mock config immediately
+	if (IS_FRONTEND_ONLY) {
+		console.log('🔓 Running in frontend-only mode, using mock config');
+		return {
+			name: 'Swift Assistant',
+			version: '',
+			default_locale: 'en-US',
+			features: {
+				enable_websocket: false,
+				enable_signup: false,
+				enable_login_form: false,
+				enable_web_search: false,
+				enable_image_generation: false
+			},
+			oauth: {
+				providers: {}
+			},
+			auth: false, // Disable authentication for frontend-only mode
+			default_models: [],
+			default_prompt_suggestions: [
+				{
+					title: ['Help me study', 'vocabulary for a college entrance exam'],
+					content: 'Help me study vocabulary: write a sentence for me to fill in the blank, and I\'ll try to pick the correct option.'
+				},
+				{
+					title: ['Give me ideas', 'for what to do with my kids\' art'],
+					content: 'What are 5 creative things I can do with my kids\' art? I don\'t want to throw them away, but it\'s also so much clutter.'
+				},
+				{
+					title: ['Tell me a fun fact', 'about the Roman Empire'],
+					content: 'Tell me a random fun fact about the Roman Empire'
+				},
+				{
+					title: ['Show me a code snippet', 'of a website\'s sticky header'],
+					content: 'Show me a code snippet of a website\'s sticky header in CSS and JavaScript.'
+				}
+			]
+		};
+	}
+
 	let error = null;
 
 	const res = await fetch(`${WEBUI_BASE_URL}/api/config`, {
@@ -1200,7 +1243,7 @@ export const getBackendConfig = async () => {
 			console.error('Backend config fetch failed, using mock config:', err);
 			// Return a mock configuration for frontend-only mode
 			return {
-				name: 'Swift Teach',
+				name: 'Swift Assistant',
 				version: '',
 				default_locale: 'en-US',
 				features: {

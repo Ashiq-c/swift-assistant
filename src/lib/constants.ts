@@ -1,12 +1,11 @@
 import { browser, dev } from '$app/environment';
-import {
-	PUBLIC_API_BASE_URL,
-	PUBLIC_CUSTOM_API_BASE_URL,
-	PUBLIC_FRONTEND_ONLY
-} from '$env/static/public';
+import { env } from '$env/dynamic/public';
 // import { version } from '../../package.json';
 
 export const APP_NAME = 'Swift';
+
+// Frontend-only mode flag
+export const IS_FRONTEND_ONLY = env.PUBLIC_FRONTEND_ONLY === 'true';
 
 // Determine the base URL based on environment and mode
 const getBaseUrl = () => {
@@ -15,12 +14,16 @@ const getBaseUrl = () => {
 			// Development mode - use localhost with port
 			return `http://${location.hostname}:8080`;
 		} else {
-			// Production mode - use current origin or environment variable
-			return PUBLIC_API_BASE_URL || location.origin;
+			// Production mode - in frontend-only mode, use current origin
+			// Otherwise use environment variable or current origin
+			if (IS_FRONTEND_ONLY) {
+				return location.origin;
+			}
+			return env.PUBLIC_API_BASE_URL || location.origin;
 		}
 	}
 	// Server-side - use environment variable or empty string
-	return PUBLIC_API_BASE_URL || '';
+	return env.PUBLIC_API_BASE_URL || '';
 };
 
 export const WEBUI_BASE_URL = getBaseUrl();
@@ -36,10 +39,7 @@ export const IMAGES_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1/images`;
 export const RETRIEVAL_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1/retrieval`;
 
 // Custom API for chatbot builder
-export const CUSTOM_API_BASE_URL = PUBLIC_CUSTOM_API_BASE_URL || 'http://127.0.0.1:8000';
-
-// Frontend-only mode flag
-export const IS_FRONTEND_ONLY = PUBLIC_FRONTEND_ONLY === 'true';
+export const CUSTOM_API_BASE_URL = env.PUBLIC_CUSTOM_API_BASE_URL || 'http://127.0.0.1:8000';
 
 // These are defined in vite.config.ts as global constants
 declare const APP_VERSION: string;
