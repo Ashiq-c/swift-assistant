@@ -1,4 +1,5 @@
 import { browser } from '$app/environment';
+import { CUSTOM_API_BASE_URL } from '$lib/constants';
 
 // Get API base URL from environment or use default
 const getApiBaseUrl = () => {

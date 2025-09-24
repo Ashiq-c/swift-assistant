@@ -153,15 +153,9 @@
 				document.body.appendChild(node);
 			}
 
-			// Render to canvas with predefined width
-			const html2canvas = (await import('html2canvas-pro')).default;
-			const canvas = await html2canvas(node, {
-				useCORS: true,
-				scale: 2, // Keep at 1x to avoid unexpected enlargements
-				width: virtualWidth, // Set fixed virtual screen width
-				windowWidth: virtualWidth, // Ensure consistent rendering
-				windowHeight: virtualHeight
-			});
+			// HTML2Canvas functionality temporarily disabled to reduce bundle size
+			console.log('HTML2Canvas functionality temporarily disabled to reduce bundle size');
+			throw new Error('Screenshot functionality temporarily disabled to reduce bundle size');
 
 			// Remove hidden node if needed
 			if (!(html instanceof HTMLElement)) {

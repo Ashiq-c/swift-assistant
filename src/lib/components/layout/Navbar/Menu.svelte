@@ -98,20 +98,9 @@
 						// For each slice, adjust scrollTop to show desired part
 						clonedElement.scrollTop = offsetY;
 
-						// Optionally: mask/hide overflowing content via CSS if needed
-						clonedElement.style.maxHeight = `${pagePixelHeight}px`;
-						// Only render the visible part
-						const html2canvas = (await import('html2canvas-pro')).default;
-						const canvas = await html2canvas(clonedElement, {
-							backgroundColor: isDarkMode ? '#000' : '#fff',
-							useCORS: true,
-							scale: 2,
-							width: virtualWidth,
-							height: Math.min(pagePixelHeight, totalHeight - offsetY),
-							// Optionally: y offset for correct region?
-							windowWidth: virtualWidth
-							//windowHeight: pagePixelHeight,
-						});
+						// HTML2Canvas functionality temporarily disabled to reduce bundle size
+						console.log('HTML2Canvas functionality temporarily disabled to reduce bundle size');
+						throw new Error('Screenshot functionality temporarily disabled to reduce bundle size');
 						const imgData = canvas.toDataURL('image/png');
 						// Maintain aspect ratio
 						const imgHeight = (canvas.height * imgWidth) / canvas.width;

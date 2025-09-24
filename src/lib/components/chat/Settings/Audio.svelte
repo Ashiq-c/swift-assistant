@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { toast } from 'svelte-sonner';
 	import { createEventDispatcher, onMount, getContext } from 'svelte';
-	import { KokoroTTS } from 'kokoro-js';
+	// import { KokoroTTS } from 'kokoro-js'; // Temporarily disabled to reduce bundle size
 
 	import { user, settings, config } from '$lib/stores';
 	import { getVoices as _getVoices } from '$lib/apis/audio';
 
 	import Switch from '$lib/components/common/Switch.svelte';
-	import { round } from '@huggingface/transformers';
+	// import { round } from '@huggingface/transformers'; // Temporarily disabled to reduce bundle size
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	const dispatch = createEventDispatcher();
@@ -118,38 +118,11 @@
 	};
 
 	const loadKokoro = async () => {
-		if (TTSEngine === 'browser-kokoro') {
-			voices = [];
-
-			if (TTSEngineConfig?.dtype) {
-				TTSModel = null;
-				TTSModelProgress = null;
-				TTSModelLoading = true;
-
-				const model_id = 'onnx-community/Kokoro-82M-v1.0-ONNX';
-
-				TTSModel = await KokoroTTS.from_pretrained(model_id, {
-					dtype: TTSEngineConfig.dtype, // Options: "fp32", "fp16", "q8", "q4", "q4f16"
-					device: !!navigator?.gpu ? 'webgpu' : 'wasm', // Detect WebGPU
-					progress_callback: (e) => {
-						TTSModelProgress = e;
-						console.log(e);
-					}
-				});
-
-				await getVoices();
-
-				// const rawAudio = await tts.generate(inputText, {
-				// 	// Use `tts.list_voices()` to list all available voices
-				// 	voice: voice
-				// });
-
-				// const blobUrl = URL.createObjectURL(await rawAudio.toBlob());
-				// const audio = new Audio(blobUrl);
-
-				// audio.play();
-			}
-		}
+		// Kokoro TTS functionality temporarily disabled to reduce bundle size
+		console.log('Kokoro TTS functionality temporarily disabled to reduce bundle size');
+		TTSModelLoading = false;
+		voices = [];
+		toast.error('Kokoro TTS is temporarily disabled to reduce bundle size');
 	};
 </script>
 

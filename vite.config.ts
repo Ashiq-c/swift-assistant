@@ -59,7 +59,6 @@ export default defineConfig({
 		},
 		chunkSizeWarningLimit: 500, // Lower warning limit for Vercel
 		target: 'esnext',
-
 	},
 	worker: {
 		format: 'es'
@@ -70,17 +69,11 @@ export default defineConfig({
 	},
 	ssr: {
 		external: [
-			'@huggingface/transformers',
-			'pdfjs-dist',
 			'sharp',
 			'canvas',
-			'html2canvas-pro',
 			'jspdf',
-			'mermaid',
-			'chart.js',
 			'katex',
 			'highlight.js',
-			'leaflet',
 			'prosemirror-view',
 			'prosemirror-state',
 			'prosemirror-model',
