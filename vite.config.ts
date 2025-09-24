@@ -16,45 +16,29 @@ export default defineConfig({
 		rollupOptions: {
 			output: {
 				manualChunks: (id) => {
-					// More aggressive chunking for Vercel
+					// Simple chunking to avoid loading issues
 					if (id.includes('node_modules')) {
-						// Split large libraries into separate chunks
-						if (id.includes('@huggingface/transformers')) return 'vendor-transformers';
-						if (id.includes('mermaid')) return 'vendor-mermaid';
+						// Only split the largest libraries
 						if (id.includes('katex')) return 'vendor-katex';
 						if (id.includes('highlight.js')) return 'vendor-highlight';
-						if (id.includes('chart.js') || id.includes('d3')) return 'vendor-charts';
-						if (id.includes('@tiptap') || id.includes('prosemirror')) return 'vendor-editor';
-						if (id.includes('bits-ui') || id.includes('lucide-svelte')) return 'vendor-ui';
-						if (id.includes('lodash') || id.includes('uuid') || id.includes('js-yaml')) return 'vendor-utils';
-						if (id.includes('marked') || id.includes('dompurify')) return 'vendor-markdown';
-						if (id.includes('@codemirror')) return 'vendor-codemirror';
 						if (id.includes('svelte') || id.includes('@sveltejs')) return 'vendor-svelte';
-						// Group remaining node_modules into smaller chunks
+						// Group everything else together
 						return 'vendor-misc';
 					}
-					// Split application code by route/feature
-					if (id.includes('src/routes')) {
-						if (id.includes('chatbot-builder')) return 'app-chatbot-builder';
-						if (id.includes('chat') || id.includes('/c/')) return 'app-chat';
-						return 'app-routes';
-					}
-					if (id.includes('src/lib/components/chatbot-builder')) return 'app-chatbot-builder';
-					if (id.includes('src/lib/components/chat')) return 'app-chat';
+					// Keep app code together for faster loading
 					if (id.includes('src/lib/components')) return 'app-components';
 					if (id.includes('src/lib/apis')) return 'app-apis';
 					if (id.includes('src/lib')) return 'app-lib';
 				}
 			}
 		},
-		chunkSizeWarningLimit: 500, // Lower warning limit for Vercel
+		chunkSizeWarningLimit: 1000, // Allow larger chunks for better loading
 		target: 'esnext',
 	},
 	worker: {
 		format: 'es'
 	},
 	esbuild: {
-		pure: ['console.log', 'console.debug', 'console.info'],
 		legalComments: 'none'
 	},
 	ssr: {
