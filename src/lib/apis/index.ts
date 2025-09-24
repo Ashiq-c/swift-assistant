@@ -1,4 +1,4 @@
-import { WEBUI_API_BASE_URL, WEBUI_BASE_URL } from '$lib/constants';
+import { WEBUI_API_BASE_URL, WEBUI_BASE_URL, IS_FRONTEND_ONLY } from '$lib/constants';
 import { convertOpenApiToToolPayload } from '$lib/utils';
 import { getOpenAIModelsDirect } from './openai';
 
@@ -1183,9 +1183,6 @@ export const getUsage = async (token: string = '') => {
 };
 
 export const getBackendConfig = async () => {
-	// Import IS_FRONTEND_ONLY flag
-	const { IS_FRONTEND_ONLY } = await import('$lib/constants');
-
 	// If running in frontend-only mode, return mock config immediately
 	if (IS_FRONTEND_ONLY) {
 		console.log('🔓 Running in frontend-only mode, using mock config');
