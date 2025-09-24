@@ -54,7 +54,8 @@
     
     // Make the API call
     try {
-      const response = await fetch('/custom-api/v1/chatbots/chatbot-create/', {
+      const apiBaseUrl = import.meta.env.PUBLIC_CUSTOM_API_BASE_URL || 'http://127.0.0.1:8000';
+      const response = await fetch(`${apiBaseUrl}/api/v1/chatbots/chatbot-create/`, {
         method: 'POST',
         body: formData
       });
@@ -67,7 +68,7 @@
       
     } catch (error) {
       console.error('Error:', error);
-      result = `Error: ${error.message}`;
+      result = `Error: ${error instanceof Error ? error.message : String(error)}`;
     }
   }
 </script>
