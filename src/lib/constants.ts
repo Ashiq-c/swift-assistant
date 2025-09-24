@@ -14,16 +14,26 @@ const getBaseUrl = () => {
 			// Development mode - use localhost with port
 			return `http://${location.hostname}:8080`;
 		} else {
-			// Production mode - in frontend-only mode, use current origin
-			// Otherwise use environment variable or current origin
+			// Production mode - handle frontend-only mode and environment variables
 			if (IS_FRONTEND_ONLY) {
+				console.log('🎯 Frontend-only mode - using current origin:', location.origin);
 				return location.origin;
 			}
-			return env.PUBLIC_API_BASE_URL || location.origin;
+
+			// For full backend mode, prioritize environment variable
+			const envUrl = env.PUBLIC_API_BASE_URL;
+			if (envUrl && envUrl !== 'undefined' && envUrl.trim() !== '') {
+				console.log('🔗 Using API base URL from environment:', envUrl);
+				return envUrl;
+			}
+
+			console.log('🔗 No environment API URL found, using current origin:', location.origin);
+			return location.origin;
 		}
 	}
 	// Server-side - use environment variable or empty string
-	return env.PUBLIC_API_BASE_URL || '';
+	const envUrl = env.PUBLIC_API_BASE_URL;
+	return (envUrl && envUrl !== 'undefined' && envUrl.trim() !== '') ? envUrl : '';
 };
 
 export const WEBUI_BASE_URL = getBaseUrl();

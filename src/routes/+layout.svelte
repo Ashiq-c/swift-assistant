@@ -368,10 +368,32 @@
 		}
 	};
 
-	onMount(async () => {
-		if (typeof window !== 'undefined' && window.applyTheme) {
-			window.applyTheme();
-		}
+	onMount(() => {
+		console.log('🚀 Starting application initialization...');
+
+		// Set a global timeout to prevent infinite loading
+		const initTimeout = setTimeout(() => {
+			console.error('⚠️ Initialization timeout - forcing splash screen removal');
+			document.getElementById('splash-screen')?.remove();
+			document.getElementById('signin-splash-screen')?.remove();
+			loaded = true;
+		}, 20000); // 20 second timeout
+
+		// Define onResize function outside async IIFE
+		const onResize = () => {
+			if (window.innerWidth < BREAKPOINT) {
+				mobile.set(true);
+			} else {
+				mobile.set(false);
+			}
+		};
+
+		// Use an async IIFE to handle the async operations
+		(async () => {
+			try {
+			if (typeof window !== 'undefined' && window.applyTheme) {
+				window.applyTheme();
+			}
 
 		if (window?.electronAPI) {
 			const info = await window.electronAPI.send({
@@ -423,14 +445,6 @@
 		theme.set(localStorage.theme);
 
 		mobile.set(window.innerWidth < BREAKPOINT);
-
-		const onResize = () => {
-			if (window.innerWidth < BREAKPOINT) {
-				mobile.set(true);
-			} else {
-				mobile.set(false);
-			}
-		};
 		window.addEventListener('resize', onResize);
 
 		user.subscribe((value) => {
@@ -452,12 +466,21 @@
 			}
 		});
 
+		console.log('🔧 Loading backend configuration...');
 		let backendConfig = null;
 		try {
-			backendConfig = await getBackendConfig();
-			console.log('Backend config:', backendConfig);
+			// Add timeout for backend config fetch to prevent hanging
+			const configPromise = getBackendConfig();
+			const timeoutPromise = new Promise((_, reject) =>
+				setTimeout(() => reject(new Error('Backend config timeout after 10 seconds')), 10000)
+			);
+
+			backendConfig = await Promise.race([configPromise, timeoutPromise]);
+			console.log('✅ Backend config loaded:', backendConfig);
 		} catch (error) {
-			console.error('Error loading backend config:', error);
+			console.error('❌ Error loading backend config:', error);
+			// Continue with initialization even if backend config fails
+			// The getBackendConfig function already provides a mock config on failure
 		}
 		// Initialize i18n even if we didn't get a backend config,
 		// so `/error` can show something that's not `undefined`.
@@ -476,8 +499,8 @@
 
 		if (backendConfig) {
 			// Save Backend Status to Store
-			await config.set(backendConfig);
-			await WEBUI_NAME.set(backendConfig.name);
+			config.set(backendConfig);
+			WEBUI_NAME.set(backendConfig.name);
 
 			if ($config) {
 				// Only setup socket if websocket is enabled and we have a real backend
@@ -497,7 +520,7 @@
 						profile_image_url: null,
 						token: 'frontend-token'
 					};
-					await user.set(mockUser);
+					user.set(mockUser);
 				} else {
 					// Normal authentication flow for full backend
 					const currentUrl = `${window.location.pathname}${window.location.search}`;
@@ -514,8 +537,8 @@
 							// Save Session User to Store
 							$socket?.emit('user-join', { auth: { token: sessionUser.token } });
 
-							await user.set(sessionUser);
-							await config.set(await getBackendConfig());
+							user.set(sessionUser);
+							config.set(await getBackendConfig());
 						} else {
 							// Redirect Invalid Session User to root page for authentication
 							localStorage.removeItem('token');
@@ -570,8 +593,26 @@
 
 		return () => {
 			window.removeEventListener('resize', onResize);
+			clearTimeout(initTimeout);
 		};
-	});
+		} catch (error) {
+			console.error('❌ Critical initialization error:', error);
+			// Force splash screen removal on any critical error
+			document.getElementById('splash-screen')?.remove();
+			document.getElementById('signin-splash-screen')?.remove();
+			loaded = true;
+		} finally {
+			// Clear the timeout since initialization completed (successfully or not)
+			clearTimeout(initTimeout);
+		}
+	})();
+
+	// Return cleanup function
+	return () => {
+		window.removeEventListener('resize', onResize);
+		clearTimeout(initTimeout);
+	};
+});
 </script>
 
 <svelte:head>
