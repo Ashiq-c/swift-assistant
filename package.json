@@ -29,7 +29,7 @@
 		"@types/event-source-polyfill": "^1.0.5",
 		"@typescript-eslint/eslint-plugin": "^8.31.1",
 		"@typescript-eslint/parser": "^8.31.1",
-		"autoprefixer": "^10.4.21",
+
 		"cypress": "^13.15.0",
 		"eslint": "^8.56.0",
 		"eslint-config-prettier": "^9.1.0",
@@ -52,6 +52,7 @@
 	"type": "module",
 	"dependencies": {
 		"@azure/msal-browser": "^4.5.0",
+		"autoprefixer": "^10.4.21",
 		"@codemirror/lang-javascript": "^6.2.2",
 		"@codemirror/lang-python": "^6.1.6",
 		"@codemirror/language-data": "^6.5.1",
