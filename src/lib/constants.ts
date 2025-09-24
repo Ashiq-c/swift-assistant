@@ -4,6 +4,9 @@ import { env } from '$env/dynamic/public';
 
 export const APP_NAME = 'Swift';
 
+// Frontend-only mode flag
+export const IS_FRONTEND_ONLY = env.PUBLIC_FRONTEND_ONLY === 'true';
+
 // Determine the base URL based on environment and mode
 const getBaseUrl = () => {
 	if (browser) {
@@ -11,7 +14,11 @@ const getBaseUrl = () => {
 			// Development mode - use localhost with port
 			return `http://${location.hostname}:8080`;
 		} else {
-			// Production mode - use current origin or environment variable
+			// Production mode - in frontend-only mode, use current origin
+			// Otherwise use environment variable or current origin
+			if (IS_FRONTEND_ONLY) {
+				return location.origin;
+			}
 			return env.PUBLIC_API_BASE_URL || location.origin;
 		}
 	}
@@ -33,9 +40,6 @@ export const RETRIEVAL_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1/retrieval`;
 
 // Custom API for chatbot builder
 export const CUSTOM_API_BASE_URL = env.PUBLIC_CUSTOM_API_BASE_URL || 'http://127.0.0.1:8000';
-
-// Frontend-only mode flag
-export const IS_FRONTEND_ONLY = env.PUBLIC_FRONTEND_ONLY === 'true';
 
 // These are defined in vite.config.ts as global constants
 declare const APP_VERSION: string;
