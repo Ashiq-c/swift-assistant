@@ -188,6 +188,21 @@
 					if (historyRes && historyRes.success && Array.isArray(historyRes.response)) {
 						chatHistory = historyRes.response;
 						console.log('🔧 Regular mode: loaded chat history as fallback', chatHistory);
+
+						// Try to extract bot information from chat history
+						if (chatHistory.length > 0 && !currentBot) {
+							const firstMessage = chatHistory[0];
+							if (firstMessage && firstMessage.bot_name) {
+								currentBot = {
+									name: firstMessage.bot_name,
+									id: firstMessage.bot_id || null,
+									picture: firstMessage.bot_picture || null,
+									bot_role: firstMessage.bot_role || null,
+									greeting_message: firstMessage.greeting_message || null
+								};
+								console.log('🤖 Bot info extracted from fallback chat history:', currentBot);
+							}
+						}
 					}
 				} catch (error) {
 					console.error('Failed to load chat history as fallback:', error);
@@ -950,6 +965,9 @@
 			temporaryChatEnabled.set(false);
 		}
 
+		// Reset currentBot when loading a new chat to avoid showing wrong bot info
+		currentBot = null;
+
 		chat = await getChatById(localStorage.token, $chatId).catch(async (error) => {
 			// Do not navigate away here; allow caller to treat id as a chatbot id
 			return null;
@@ -957,6 +975,13 @@
 
 		if (chat) {
 			console.log('🔍 Chat loaded for chatId:', $chatId, chat);
+
+			// Extract bot information from chat data if available
+			if (chat.bot_info) {
+				currentBot = chat.bot_info;
+				console.log('🤖 Bot info extracted from chat data:', currentBot);
+			}
+
 			tags = await getTagsById(localStorage.token, $chatId).catch(async (error) => {
 				return [];
 			});
@@ -2469,7 +2494,15 @@
 					history: history,
 					messages: createMessagesList(history, history.currentId),
 					tags: [],
-					timestamp: Date.now()
+					timestamp: Date.now(),
+					// Include bot information if available
+					bot_info: currentBot ? {
+						id: currentBot.id,
+						name: currentBot.name,
+						picture: currentBot.picture,
+						bot_role: currentBot.bot_role,
+						greeting_message: currentBot.greeting_message
+					} : null
 				},
 				$selectedFolder?.id
 			);
@@ -2531,6 +2564,32 @@
 			if (historyRes && historyRes.success && Array.isArray(historyRes.response)) {
 				chatHistory = historyRes.response;
 				console.log('✅ Chat history loaded successfully:', chatHistory.length, 'messages');
+
+				// Reset currentBot before extracting new bot information
+				if (!currentBot) {
+					// Try to extract bot information from chat history
+					if (chatHistory.length > 0) {
+						// Look for bot information in the first message
+						const firstMessage = chatHistory[0];
+						if (firstMessage && firstMessage.bot_name) {
+							// Create a currentBot object from the available information
+							currentBot = {
+								name: firstMessage.bot_name,
+								id: firstMessage.bot_id || null,
+								picture: firstMessage.bot_picture || null,
+								bot_role: firstMessage.bot_role || null,
+								greeting_message: firstMessage.greeting_message || null
+							};
+							console.log('🤖 Bot info extracted from chat history:', currentBot);
+						} else if (firstMessage && firstMessage.bot_info) {
+							currentBot = firstMessage.bot_info;
+							console.log('🤖 Bot info extracted from chat history bot_info:', currentBot);
+						} else if (firstMessage && firstMessage.metadata && firstMessage.metadata.bot) {
+							currentBot = firstMessage.metadata.bot;
+							console.log('🤖 Bot info extracted from message metadata:', currentBot);
+						}
+					}
+				}
 			} else {
 				chatHistory = [];
 				console.log('❌ No chat history found or invalid response:', historyRes);
@@ -2656,6 +2715,11 @@
 	// Debug reactive statement to track chatId changes
 	$: if ($chatId) {
 		console.log('🔍 ChatId changed to:', $chatId);
+		// Reset currentBot when chatId changes to avoid showing wrong bot info
+		if (lastLoadedChatId !== $chatId) {
+			currentBot = null;
+			console.log('🔄 Reset currentBot for new chatId:', $chatId);
+		}
 		// Load chat history when chatId changes (as a backup)
 		loadChatHistoryOnce($chatId);
 	}

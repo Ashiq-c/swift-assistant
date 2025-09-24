@@ -20,16 +20,12 @@ function showNotification(message, type = 'info') {
 // Get API base URL
 const getApiBaseUrl = () => {
   if (browser) {
-    if (dev) {
-      // Development mode - use the proxy configured in vite.config.ts
-      return '/custom-api';
-    } else {
-      // Production mode - use the actual API URL
-      return CUSTOM_API_BASE_URL;
-    }
+    // Use environment variable for custom API base URL
+    const baseUrl = import.meta.env.PUBLIC_CUSTOM_API_BASE_URL || 'http://127.0.0.1:8000';
+    return `${baseUrl}/api`;
   }
-  // Server-side fallback - use environment variable
-  return CUSTOM_API_BASE_URL;
+  // Server-side fallback
+  return 'http://127.0.0.1:8000/api';
 };
 
 /**
