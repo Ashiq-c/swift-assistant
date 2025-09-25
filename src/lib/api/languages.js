@@ -1,4 +1,5 @@
 import { browser } from '$app/environment';
+import { PUBLIC_CUSTOM_API_BASE_URL } from '$env/static/public';
 
 // Get API base URL from environment or use default
 const getApiBaseUrl = () => {
@@ -6,8 +7,9 @@ const getApiBaseUrl = () => {
     // In browser, use the proxy configured in vite.config.ts
     return '/custom-api';
   }
-  // Server-side fallback
-  return 'http://127.0.0.1:8000/';
+  // Server-side fallback: use PUBLIC_CUSTOM_API_BASE_URL if set, otherwise local default
+  const base = (PUBLIC_CUSTOM_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/?$/, '/');
+  return base;
 };
 
 /**
