@@ -45,7 +45,7 @@ export default defineConfig({
 				secure: false
 			},
 			'/custom-api': {
-				target: 'http://127.0.0.1:8000/',
+				target: process.env.PUBLIC_API_BASE_URL,
 				changeOrigin: true,
 				secure: false,
 				rewrite: (path) => path.replace(/^\/custom-api/, '/api')
