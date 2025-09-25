@@ -1,6 +1,6 @@
 <script>
-  import { PUBLIC_API_BASE_URL, PUBLIC_CUSTOM_API_BASE_URL } from '$env/static/public';
-  const RAW_API = PUBLIC_API_BASE_URL || PUBLIC_CUSTOM_API_BASE_URL || '';
+  import { env as publicEnv } from '$env/dynamic/public';
+  const RAW_API = publicEnv.PUBLIC_API_BASE_URL || publicEnv.PUBLIC_CUSTOM_API_BASE_URL || '';
   const API_BASE = (() => {
     const t = RAW_API.replace(/\/+$/, '');
     return t.endsWith('/api') ? t : `${t}/api`;
