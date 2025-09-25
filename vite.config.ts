@@ -28,13 +28,35 @@ export default defineConfig(({ mode }) => {
 		build: {
 			sourcemap: false,
 			minify: true,
-			cssMinify: true
+			cssMinify: true,
+			rollupOptions: {
+				output: {
+					manualChunks: (id) => {
+						// Simple chunking to avoid loading issues
+						if (id.includes('node_modules')) {
+							// Only split the largest libraries
+							if (id.includes('katex')) return 'vendor-katex';
+							if (id.includes('highlight.js')) return 'vendor-highlight';
+							if (id.includes('svelte') || id.includes('@sveltejs')) return 'vendor-svelte';
+							// Group everything else together
+							return 'vendor-misc';
+						}
+						// Keep app code together for faster loading
+						if (id.includes('src/lib/components')) return 'app-components';
+						if (id.includes('src/lib/apis')) return 'app-apis';
+						if (id.includes('src/lib')) return 'app-lib';
+					}
+				}
+			},
+			chunkSizeWarningLimit: 1000, // Allow larger chunks for better loading
+			target: 'esnext',
 		},
 		worker: {
 			format: 'es'
 		},
 		esbuild: {
-			pure: process.env.ENV === 'dev' ? [] : ['console.log', 'console.debug']
+			pure: process.env.ENV === 'dev' ? [] : ['console.log', 'console.debug'],
+			legalComments: 'none'
 		},
 		server: {
 			proxy: {

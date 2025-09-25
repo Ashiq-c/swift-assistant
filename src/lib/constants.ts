@@ -1,17 +1,59 @@
 import { browser, dev } from '$app/environment';
+import { env } from '$env/dynamic/public';
 // import { version } from '../../package.json';
 
 export const APP_NAME = 'Swift';
 
-export const WEBUI_HOSTNAME = browser ? (dev ? `${location.hostname}:8080` : ``) : '';
-export const WEBUI_BASE_URL = browser ? (dev ? `http://${WEBUI_HOSTNAME}` : ``) : ``;
+// Frontend-only mode flag
+export const IS_FRONTEND_ONLY = env.PUBLIC_FRONTEND_ONLY === 'true';
+
+// Determine the base URL based on environment and mode
+const getBaseUrl = () => {
+	if (browser) {
+		if (dev) {
+			// Development mode - use localhost with port
+			return `http://${location.hostname}:8080`;
+		} else {
+			// Production mode - handle frontend-only mode and environment variables
+			if (IS_FRONTEND_ONLY) {
+				console.log('🎯 Frontend-only mode - using current origin:', location.origin);
+				return location.origin;
+			}
+
+			// For full backend mode, prioritize environment variable
+			const envUrl = env.PUBLIC_API_BASE_URL;
+			if (envUrl && envUrl !== 'undefined' && envUrl.trim() !== '') {
+				console.log('🔗 Using API base URL from environment:', envUrl);
+				return envUrl;
+			}
+
+			console.log('🔗 No environment API URL found, using current origin:', location.origin);
+			return location.origin;
+		}
+	}
+	// Server-side - use environment variable or empty string
+	const envUrl = env.PUBLIC_API_BASE_URL;
+	return (envUrl && envUrl !== 'undefined' && envUrl.trim() !== '') ? envUrl : '';
+};
+
+export const WEBUI_BASE_URL = getBaseUrl();
 export const WEBUI_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1`;
+
+// Legacy export for backward compatibility
+export const WEBUI_HOSTNAME = browser ? (dev ? `${location.hostname}:8080` : '') : '';
 
 export const OLLAMA_API_BASE_URL = `${WEBUI_BASE_URL}/ollama`;
 export const OPENAI_API_BASE_URL = `${WEBUI_BASE_URL}/openai`;
 export const AUDIO_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1/audio`;
 export const IMAGES_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1/images`;
 export const RETRIEVAL_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1/retrieval`;
+
+// Custom API for chatbot builder
+export const CUSTOM_API_BASE_URL = env.PUBLIC_CUSTOM_API_BASE_URL || 'http://127.0.0.1:8000';
+
+// These are defined in vite.config.ts as global constants
+declare const APP_VERSION: string;
+declare const APP_BUILD_HASH: string;
 
 export const WEBUI_VERSION = APP_VERSION;
 export const WEBUI_BUILD_HASH = APP_BUILD_HASH;

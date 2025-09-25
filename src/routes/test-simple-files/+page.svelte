@@ -1,23 +1,30 @@
 <script>
+  import { env as publicEnv } from '$env/dynamic/public';
+  const RAW_API = publicEnv.PUBLIC_API_BASE_URL || publicEnv.PUBLIC_CUSTOM_API_BASE_URL || '';
+  const API_BASE = (() => {
+    const t = RAW_API.replace(/\/+$/, '');
+    return t.endsWith('/api') ? t : `${t}/api`;
+  })();
+
   let result = '';
 
   async function testSimpleFormData() {
     console.log('=== SIMPLE FORM DATA TEST ===');
-    
+
     // Create a simple file
     const fileContent = 'This is a test file content';
     const blob = new Blob([fileContent], { type: 'text/plain' });
     const file = new File([blob], 'test.txt', { type: 'text/plain' });
-    
+
     console.log('Created file:', file);
     console.log('File instanceof File:', file instanceof File);
-    
+
     // Create FormData
     const formData = new FormData();
-    
+
     // Add the file exactly as in your curl
     formData.append('chatbot_files[0]file', file);
-    
+
     // Add other required fields
     formData.append('name', 'Test Bot');
     formData.append('description', 'Test Description');
@@ -41,7 +48,7 @@
     formData.append('analysis_scales[0]level_name', 'Beginning');
     formData.append('analysis_scales[0]description', 'Basic understanding');
     formData.append('analysis_scales[0]color', 'green');
-    
+
     // Log FormData contents
     console.log('FormData entries:');
     for (let [key, value] of formData.entries()) {
@@ -51,30 +58,30 @@
         console.log(`${key}: ${value}`);
       }
     }
-    
+
     // Make the API call
     try {
-      const response = await fetch('/custom-api/v1/chatbots/chatbot-create/', {
+      const response = await fetch(`${API_BASE}/v1/chatbots/chatbot-create/`, {
         method: 'POST',
         body: formData
       });
-      
+
       console.log('Response status:', response.status);
       const responseText = await response.text();
       console.log('Response text:', responseText);
-      
+
       result = `Status: ${response.status}\nResponse: ${responseText}`;
-      
+
     } catch (error) {
       console.error('Error:', error);
-      result = `Error: ${error.message}`;
+      result = `Error: ${error instanceof Error ? error.message : String(error)}`;
     }
   }
 </script>
 
 <div class="container mx-auto p-8 max-w-4xl">
   <h1 class="text-3xl font-bold mb-6">Simple File Upload Test</h1>
-  
+
   <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
     <h2 class="text-lg font-semibold mb-2">Direct FormData Test</h2>
     <p><strong>Purpose:</strong> Test direct FormData creation with chatbot_files[0]file</p>

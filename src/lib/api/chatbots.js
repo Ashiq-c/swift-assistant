@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
-import { PUBLIC_CUSTOM_API_BASE_URL } from '$env/static/public';
+import { env as publicEnv } from '$env/dynamic/public';
 import { showSuccessPopup, showErrorPopup } from '$lib/stores/popup.js';
+
 
 /**
  * Show notification message using popup
@@ -17,15 +18,16 @@ function showNotification(message, type = 'info') {
   }
 }
 
-// Get API base URL
+// Get API base URL from environment (.env)
 const getApiBaseUrl = () => {
   if (browser) {
     // In browser, use the proxy configured in vite.config.ts
     return '/custom-api';
   }
-  // Server-side fallback: use PUBLIC_CUSTOM_API_BASE_URL if set, otherwise local default
-  const base = (PUBLIC_CUSTOM_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
-  return base;
+  // Server-side fallback: use environment variables
+  const raw = publicEnv.PUBLIC_API_BASE_URL || publicEnv.PUBLIC_CUSTOM_API_BASE_URL || 'http://127.0.0.1:8000';
+  const base = raw.replace(/\/+$/, '');
+  return base.endsWith('/api') ? base : `${base}/api`;
 };
 
 /**

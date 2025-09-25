@@ -1,15 +1,11 @@
 {
-	"buildCommand": "npm run build",
+	"buildCommand": "cp vite.config.vercel.ts vite.config.ts && npm run build",
 	"outputDirectory": "build",
 	"build": {
 		"env": {
-			"NODE_OPTIONS": "--max-old-space-size=16384"
+			"NODE_OPTIONS": "--max-old-space-size=16384",
+			"NODE_ENV": "production",
+			"VITE_BUILD_TARGET": "vercel"
 		}
-	},
-	"rewrites": [
-		{
-			"source": "/(.*)",
-			"destination": "/index.html"
-		}
-	]
+	}
 }

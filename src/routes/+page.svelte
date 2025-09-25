@@ -4,7 +4,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 
-	import { getSessionUser, userSignIn, userSignUp } from '$lib/apis/auths';
+	import { getSessionUser } from '$lib/apis/auths';
 	import { config, user } from '$lib/stores';
 
 	import OnBoarding from '$lib/components/OnBoarding.svelte';
@@ -75,7 +75,7 @@
 				redirect: "follow" as RequestRedirect
 			};
 
-			const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}api/v1/signin/`, requestOptions);
+			const response = await fetch(`https://swift-ai-assist.e8demo.com/api/v1/signin/`, requestOptions);
 			const result = await response.json();
 
 			if (result.result === "success") {
@@ -101,14 +101,44 @@
 	};
 
 	const signUpSubmitHandler = async () => {
-		const sessionUser = await userSignUp(name, email, password, '').catch((error) => {
-			toast.error(error);
-			return null;
-		});
+		// Clear any previous error and set loading state
+		errorMessage = '';
+		isLoading = true;
 
-		if (sessionUser) {
-			const redirectPath = querystringValue('redirect') || '/home';
-			goto(redirectPath);
+		try {
+			const formdata = new FormData();
+			formdata.append("name", name);
+			formdata.append("email", email);
+			formdata.append("password", password);
+
+			const requestOptions: RequestInit = {
+				method: "POST",
+				body: formdata,
+				redirect: "follow" as RequestRedirect
+			};
+
+			const response = await fetch(`https://swift-ai-assist.e8demo.com/api/v1/signup/`, requestOptions);
+			const result = await response.json();
+
+			if (result.result === "success") {
+				// Store the tokens in localStorage
+				localStorage.setItem('token', result.token.access_token);
+				localStorage.setItem('refresh_token', result.token.refresh_token);
+				localStorage.setItem('token_type', result.token.token_type);
+				localStorage.setItem('token_scope', result.token.scope);
+
+				// Redirect to chat page with the chat_id
+				goto(`/c/${result.chat_id}`);
+			} else {
+				// Show error message
+				errorMessage = result.message || 'Signup failed. Please check your information.';
+			}
+		} catch (error) {
+			console.error('Signup error:', error);
+			errorMessage = 'Network error. Please try again.';
+		} finally {
+			// Always reset loading state
+			isLoading = false;
 		}
 	};
 
