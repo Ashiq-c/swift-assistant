@@ -1,5 +1,5 @@
 <script lang="ts">
-	import mermaid from 'mermaid';
+	// import mermaid from 'mermaid'; // Temporarily disabled to reduce bundle size
 
 	import { v4 as uuidv4 } from 'uuid';
 
@@ -210,14 +210,9 @@
 	let debounceTimeout;
 
 	const drawMermaidDiagram = async () => {
-		try {
-			if (await mermaid.parse(code)) {
-				const { svg } = await mermaid.render(`mermaid-${uuidv4()}`, code);
-				mermaidHtml = svg;
-			}
-		} catch (error) {
-			console.log('Error:', error);
-		}
+		// Mermaid functionality temporarily disabled to reduce bundle size
+		console.log('Mermaid diagrams are temporarily disabled to reduce bundle size');
+		mermaidHtml = '<div class="p-4 text-center text-gray-500">Mermaid diagrams temporarily disabled</div>';
 	};
 
 	const render = async () => {
@@ -275,19 +270,8 @@
 			onUpdate(token);
 		}
 
-		if (document.documentElement.classList.contains('dark')) {
-			mermaid.initialize({
-				startOnLoad: true,
-				theme: 'dark',
-				securityLevel: 'loose'
-			});
-		} else {
-			mermaid.initialize({
-				startOnLoad: true,
-				theme: 'default',
-				securityLevel: 'loose'
-			});
-		}
+		// Mermaid initialization disabled to reduce bundle size
+		console.log('Mermaid initialization skipped - functionality temporarily disabled');
 	});
 </script>
 

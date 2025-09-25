@@ -16,53 +16,61 @@ export default defineConfig({
 		rollupOptions: {
 			output: {
 				manualChunks: (id) => {
-					// Simple chunking to avoid loading issues
+					// More aggressive chunking for Vercel
 					if (id.includes('node_modules')) {
-						// Only split the largest libraries
+						// Split large libraries into separate chunks
+						if (id.includes('@huggingface/transformers')) return 'vendor-transformers';
+						if (id.includes('mermaid')) return 'vendor-mermaid';
 						if (id.includes('katex')) return 'vendor-katex';
 						if (id.includes('highlight.js')) return 'vendor-highlight';
+						if (id.includes('chart.js') || id.includes('d3')) return 'vendor-charts';
+						if (id.includes('@tiptap') || id.includes('prosemirror')) return 'vendor-editor';
+						if (id.includes('bits-ui') || id.includes('lucide-svelte')) return 'vendor-ui';
+						if (id.includes('lodash') || id.includes('uuid') || id.includes('js-yaml')) return 'vendor-utils';
+						if (id.includes('marked') || id.includes('dompurify')) return 'vendor-markdown';
+						if (id.includes('@codemirror')) return 'vendor-codemirror';
 						if (id.includes('svelte') || id.includes('@sveltejs')) return 'vendor-svelte';
-						// Group everything else together
+						// Group remaining node_modules into smaller chunks
 						return 'vendor-misc';
 					}
-					// Keep app code together for faster loading
+					// Split application code by route/feature
+					if (id.includes('src/routes')) {
+						if (id.includes('chatbot-builder')) return 'app-chatbot-builder';
+						if (id.includes('chat') || id.includes('/c/')) return 'app-chat';
+						return 'app-routes';
+					}
+					if (id.includes('src/lib/components/chatbot-builder')) return 'app-chatbot-builder';
+					if (id.includes('src/lib/components/chat')) return 'app-chat';
 					if (id.includes('src/lib/components')) return 'app-components';
 					if (id.includes('src/lib/apis')) return 'app-apis';
 					if (id.includes('src/lib')) return 'app-lib';
 				}
 			}
 		},
-		chunkSizeWarningLimit: 1000, // Allow larger chunks for better loading
+		chunkSizeWarningLimit: 500, // Lower warning limit for Vercel
 		target: 'esnext',
+
 	},
 	worker: {
 		format: 'es'
 	},
 	esbuild: {
-		pure: process.env.ENV === 'dev' ? [] : ['console.log', 'console.debug'],
+		pure: ['console.log', 'console.debug', 'console.info'],
 		legalComments: 'none'
-	},
-	server: {
-		proxy: {
-			'/api': {
-				target: 'http://localhost:8080',
-				changeOrigin: true,
-				secure: false
-			},
-			'/ollama': {
-				target: 'http://localhost:8080',
-				changeOrigin: true,
-				secure: false
-			}
-		}
 	},
 	ssr: {
 		external: [
+			'@huggingface/transformers',
+			'pdfjs-dist',
 			'sharp',
 			'canvas',
+			'html2canvas-pro',
 			'jspdf',
+			'mermaid',
+			'chart.js',
 			'katex',
 			'highlight.js',
+			'leaflet',
 			'prosemirror-view',
 			'prosemirror-state',
 			'prosemirror-model',

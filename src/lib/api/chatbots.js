@@ -1,6 +1,7 @@
 import { PUBLIC_API_BASE_URL, PUBLIC_CUSTOM_API_BASE_URL } from '$env/static/public';
 import { showSuccessPopup, showErrorPopup } from '$lib/stores/popup.js';
 
+
 /**
  * Show notification message using popup
  * @param {string} message - The message to show

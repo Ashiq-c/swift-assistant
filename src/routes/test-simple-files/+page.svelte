@@ -74,7 +74,7 @@
 
     } catch (error) {
       console.error('Error:', error);
-      result = `Error: ${error.message}`;
+      result = `Error: ${error instanceof Error ? error.message : String(error)}`;
     }
   }
 </script>
