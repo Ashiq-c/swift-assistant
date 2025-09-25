@@ -1,4 +1,4 @@
-import { PUBLIC_API_BASE_URL, PUBLIC_CUSTOM_API_BASE_URL } from '$env/static/public';
+import { env as publicEnv } from '$env/dynamic/public';
 import { showSuccessPopup, showErrorPopup } from '$lib/stores/popup.js';
 
 
@@ -19,7 +19,7 @@ function showNotification(message, type = 'info') {
 
 // Get API base URL from environment (.env)
 const getApiBaseUrl = () => {
-  const raw = PUBLIC_API_BASE_URL || PUBLIC_CUSTOM_API_BASE_URL || '';
+  const raw = publicEnv.PUBLIC_API_BASE_URL || publicEnv.PUBLIC_CUSTOM_API_BASE_URL || '';
   const base = raw.replace(/\/+$/, '');
   return base.endsWith('/api') ? base : `${base}/api`;
 };
