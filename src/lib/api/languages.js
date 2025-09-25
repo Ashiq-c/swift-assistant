@@ -1,15 +1,10 @@
-import { browser } from '$app/environment';
-import { CUSTOM_API_BASE_URL } from '$lib/constants';
+import { PUBLIC_API_BASE_URL, PUBLIC_CUSTOM_API_BASE_URL } from '$env/static/public';
 
-// Get API base URL from environment or use default
+// Get API base URL from environment (.env)
 const getApiBaseUrl = () => {
-  if (browser) {
-    // Use environment variable for custom API base URL
-    const baseUrl = import.meta.env.PUBLIC_CUSTOM_API_BASE_URL || 'http://127.0.0.1:8000';
-    return `${baseUrl}/api`;
-  }
-  // Server-side fallback
-  return 'http://127.0.0.1:8000/api';
+  const raw = PUBLIC_API_BASE_URL || PUBLIC_CUSTOM_API_BASE_URL || '';
+  const base = raw.replace(/\/+$/, '');
+  return base.endsWith('/api') ? base : `${base}/api`;
 };
 
 /**

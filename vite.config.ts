@@ -39,7 +39,22 @@ export default defineConfig({
 		format: 'es'
 	},
 	esbuild: {
+		pure: process.env.ENV === 'dev' ? [] : ['console.log', 'console.debug'],
 		legalComments: 'none'
+	},
+	server: {
+		proxy: {
+			'/api': {
+				target: 'http://localhost:8080',
+				changeOrigin: true,
+				secure: false
+			},
+			'/ollama': {
+				target: 'http://localhost:8080',
+				changeOrigin: true,
+				secure: false
+			}
+		}
 	},
 	ssr: {
 		external: [
